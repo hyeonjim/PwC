@@ -1,0 +1,8 @@
+version: axhub/v1
+name: aurora-hyeonji
+runtime:
+  port: 8080
+  health_path: /healthz
+build:
+  deploy_method: docker
+  dockerfile: Dockerfile
