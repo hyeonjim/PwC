@@ -24,6 +24,9 @@ class Alternative(BaseModel):
 class Recommendation(BaseModel):
     decision: Decision
     summary: str = Field(description="결론 한두 문장")
+    recommended_option: str = Field(
+        description="근거 자료의 대안 중 권고하는 것의 key. 고를 수 없으면 빈 문자열"
+    )
     evidence: list[Evidence]
     alternatives: list[Alternative]
     missing_info: list[str] = Field(description="판단에 필요하지만 확인되지 않은 정보")

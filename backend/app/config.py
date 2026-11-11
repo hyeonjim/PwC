@@ -5,6 +5,7 @@
 - AXHub 는 DATABASE_URL·DIRECT_DATABASE_URL·PORT 를 자동으로 넣어 준다.
 """
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
@@ -26,6 +27,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    # 가상기업 기준일(문제 속 "오늘"). 실제 날짜가 아니라 이 날짜로 판단한다(A05 2항).
+    as_of_date: date = date(2026, 7, 1)
 
     # DB
     database_url: str = ""

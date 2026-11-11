@@ -13,6 +13,7 @@ def rule_based_judgment(reason: str, required_approver: str = "담당 승인권�
         recommendation=Recommendation(
             decision="hold",
             summary="AI 판단을 받지 못해 보류합니다. 계산 결과를 보고 담당자가 직접 판단해 주세요.",
+            recommended_option="",
             evidence=[
                 Evidence(
                     statement=f"AI 판단 불가 사유: {reason}",

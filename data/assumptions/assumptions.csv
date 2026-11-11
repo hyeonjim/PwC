@@ -1,0 +1,13 @@
+id|kind|applies_from|source_ref|statement|reason|used_in
+ASM-001|assumption|2026-07-01|02_masil/inventory/sc_purchase_orders_ms.csv (order_date, lead_time_weeks)|발주 입고예정일 = 발주일 + 리드타임(주)|원본 발주 표에 입고예정일 컬럼이 없다. 공급자 회신(모의)을 받으면 그 값으로 바꾼다.|공급 전망, 추가 발주 대안
+ASM-002|assumption|2026-07-01|02_masil/inventory/sku_inventory_ms.csv (in_transit_qty)|이동중 수량은 입고일을 확인하기 전까지 재고 전망에 넣지 않는다|원본에 이동중 물량의 입고예정일과 발주 연결키가 없다. 품절을 놓치지 않는 쪽(보수적)으로 잡고, 확인 요청 작업을 만든다.|공급 전망, 정보 공백 판정
+ASM-003|assumption|2026-07-01|02_masil/inventory/sku_weekly_sales_ms.csv (최근 4주 평균)|캠페인 추가 수요 = 평시 주간 수요 × 수요 증가율(%). 증가율은 마케팅팀이 접수할 때 내는 값이다|마케팅 표본 주문을 회사 전체 SKU 수요로 환산할 근거가 원본에 없다(W01 미해결 지점). 증가율은 부서 주장으로 표시한다.|공급 전망, 모든 대안
+ASM-004|assumption|2026-07-01|02_masil/inventory/sc_purchase_orders_ms.csv (amount_krw / order_qty)|추가 발주 단가 = 같은 SKU 의 기존 발주 금액 ÷ 수량|원본에 SKU 별 매입 단가표가 따로 없다.|추가 발주 금액, 현금 전망
+ASM-005|assumption|2026-07-01|02_masil/financials/fin_ar_aging_ms.csv (due_date < 기준일)|기한이 지난 미수금은 현금 전망에서 뺀다|회수 시점을 알 수 없다. 넣으면 잔액을 좋게 보게 되므로 뺀다.|현금 전망
+ASM-006|assumption|2026-07-01|02_masil/financials/fin_ap_aging_ms.csv (payment_due_date < 기준일, po_id=NONE)|기한이 지난 운영 매입채무는 기준일에 지급한다고 본다|지급 시점을 알 수 없다. 미루는 것으로 가정하면 잔액을 좋게 보게 된다.|현금 전망
+ASM-007|assumption|2026-07-01|02_masil/inventory/sc_purchase_orders_ms.csv (order_date, payment_due_date)|추가 발주 대금 지급일 = 발주일 + 28일|기존 발주 14건이 발주 후 25~29일에 지급 예정이다. 신규 발주의 지급조건은 원본에 없다.|추가 발주 대안, 승인권자 판정
+ASM-008|assumption|2026-07-01|00_common/approval_authority_policy.md|현금 유출이 없는 캠페인 일정·물량·상품 조정은 SCM 과 마케팅팀이 합의해 확정한다|원본 승인 규정에 이 결정의 권한이 없다. 기존 권한(발주=SCM, 캠페인 확대안=마케팅팀/Masil 대표, 하회 구간 신규 약정=그룹 CEO)은 그대로 둔다.|연기·물량 상한·상품 변경 대안의 승인권자
+ASM-009|assumption|2026-07-01|00_common/calculation_definitions.md 1.2|주말에 걸린 회수·지급 예정일은 다음 영업일로 옮긴다|약정 하회는 영업일별 일말 잔액으로 판정한다. 영업일은 월~금, 공휴일 없음(A05).|현금 전망
+ASM-010|assumption|2026-07-01|02_masil/inventory/sc_purchase_orders_ms.csv|기준일 이후의 정기 발주는 전망에 넣지 않는다|원본에는 2026-06 발주 14건만 있다. 전망 뒤쪽 주차의 품절은 이 한계 때문에 과대일 수 있다.|공급 전망(16주)
+ASM-011|assumption|2026-07-01|02_masil/inventory/sku_inventory_ms.csv (in_transit_qty)|입고일 미확인 이동중 수량은, 지금 바로 입고된다고 가정했을 때 캠페인 기간 부족 수량이 달라지는 경우에만 판단을 바꾸는 정보 공백으로 본다|수량이 적어 결론에 영향이 없는 건까지 확인을 요청하면 확인 절차가 늦어진다. 영향이 있는 건만 확인 요청 작업을 만든다.|정보 공백 판정, 확인 요청 작업
+MAP-001|mapping|2026-07-01|02_masil/master/m_campaign_ms.csv (product_line) ↔ 02_masil/master/m_sku_ms.csv (category)|캠페인 상품군 이름과 SKU 분류 이름이 같으면 대상 SKU 후보로 보여 준다|원본에 캠페인과 SKU 를 잇는 키가 없다. 후보만 보여 주고 실제 대상 SKU 는 접수할 때 사람이 고른다.|검토 건 접수 화면
