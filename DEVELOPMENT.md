@@ -1,0 +1,53 @@
+# 개발 가이드
+
+Next.js(화면) + FastAPI(백엔드)를 컨테이너 하나로 묶어 AXHub 앱 `aurora-hyeonji` 에 배포합니다.
+
+## 폴더
+
+| 폴더 | 내용 |
+|---|---|
+| `01_참가자_배포용/` | 대회 원본 자료. **읽기만 하고 수정하지 않음** |
+| `data/assumptions/` | 내가 만든 가정·매핑·합성 데이터·모의 회신 |
+| `backend/` | FastAPI. `app/api`(엔드포인트) · `app/engine`(계산) · `app/ai`(Claude 판단) · `app/data`(원본 CSV 읽기) · `app/db`(테이블) |
+| `frontend/` | Next.js 정적 내보내기. 데이터는 모두 `/api` 에서 받음 |
+
+## 처음 한 번
+
+```powershell
+# 백엔드
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+copy .env.example .env      # ANTHROPIC_API_KEY 를 직접 채우기
+.\.venv\Scripts\python.exe -m alembic upgrade head
+
+# 프론트엔드
+cd ..\frontend
+pnpm install
+```
+
+## 개발할 때 (터미널 두 개)
+
+```powershell
+# 터미널 1 — 백엔드 http://localhost:8000 (API 문서: /docs)
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+
+# 터미널 2 — 화면 http://localhost:3000
+cd frontend
+pnpm dev
+```
+
+## 확인
+
+```powershell
+cd backend;  .\.venv\Scripts\python.exe -m pytest -q
+cd frontend; pnpm lint; pnpm build
+docker build -t aurora-local .; docker run --rm -p 8080:8080 aurora-local   # 배포 이미지 그대로 실행
+```
+
+## 배포
+
+- 작업은 `dev` 브랜치에서 합니다.
+- AXHub 는 `main` 브랜치를 배포합니다. `main` 에 합쳐서 push 하면 배포가 시작됩니다.
+- 비밀값(`ANTHROPIC_API_KEY`)은 AXHub 비밀 환경변수로 등록합니다. `DATABASE_URL`·`PORT` 는 AXHub 가 넣어 줍니다.
