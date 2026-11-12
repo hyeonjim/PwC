@@ -7,6 +7,7 @@
   - 승인된 추가 발주      → 입고 전망과 현금 전망에 반영
   - 승인된 캠페인 수요    → 같은 SKU 를 쓰는 다른 캠페인의 재고 전망에서 차감
   - 공급자 입고예정 회신  → 입고 전망에 반영
+  - Corevia 생산 여력 회신 → 추가 발주 가능 수량에 반영
 
 tasks.kind
   case       캠페인 검토 건
@@ -14,19 +15,21 @@ tasks.kind
   work_item  부서별 후속 작업
   po         시스템에서 만든 추가 발주
   eta_reply  공급자 입고예정 회신(모의)
+  capacity_reply  Corevia 생산계획팀의 추가 생산 가능 수량 회신(모의)
 """
 
 import json
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai.service import judge
-from app.db.models import Event, Task
-from app.engine import campaign_case
-from app.engine.supply import SupplyState, sku_table
+from app.models import Task
+from app.repositories import event_repository, task_repository
+from app.repositories.task_repository import add_task, get_task, list_tasks
+from app.services import campaign_case_service, production_capacity_service
+from app.services.judgment_service import judge
+from app.services.supply_service import SupplyState, sku_table
 
 # 검토 건 상태
 RECEIVED = "received"  # 접수
@@ -56,7 +59,7 @@ def _jsonable(value: Any) -> Any:
 
 
 def log(db: Session, task_id: int | None, actor: str, action: str, note: str = "", detail: dict | None = None) -> None:
-    db.add(Event(task_id=task_id, actor=actor, action=action, note=note, detail=_jsonable(detail or {})))
+    event_repository.add_event(db, task_id, actor, action, note, _jsonable(detail or {}))
 
 
 def _patch(task: Task, **changes: Any) -> None:
@@ -64,22 +67,16 @@ def _patch(task: Task, **changes: Any) -> None:
     task.payload = _jsonable({**task.payload, **changes})
 
 
-def _tasks(db: Session, kind: str, **payload_match: Any) -> list[Task]:
-    rows = db.scalars(select(Task).where(Task.kind == kind).order_by(Task.id)).all()
-    return [t for t in rows if all(t.payload.get(k) == v for k, v in payload_match.items())]
-
-
 def get_case(db: Session, case_id: int) -> Task:
-    task = db.get(Task, case_id)
-    if task is None or task.kind != "case":
+    task = task_repository.get_task_of_kind(db, case_id, "case")
+    if task is None:
         raise WorkflowError(f"검토 건 {case_id} 을(를) 찾을 수 없습니다.")
     return task
 
 
 def _work_item(db: Session, case: Task, dept: str, title: str, type_: str, **extra: Any) -> Task:
     item = Task(kind="work_item", title=title, status="open", payload=_jsonable({"case_id": case.id, "dept": dept, "type": type_, **extra}))
-    db.add(item)
-    db.flush()
+    add_task(db, item)
     log(db, case.id, "system", "작업 생성", f"[{dept}] {title}", {"work_item_id": item.id})
     return item
 
@@ -89,7 +86,7 @@ def _work_item(db: Session, case: Task, dept: str, title: str, type_: str, **ext
 
 def build_state(db: Session, exclude_case_id: int | None = None) -> SupplyState:
     state = SupplyState()
-    for reply in _tasks(db, "eta_reply"):
+    for reply in list_tasks(db, "eta_reply"):
         if reply.status != "active":
             continue
         eta = pd.to_datetime(reply.payload["eta"]).date()
@@ -97,10 +94,13 @@ def build_state(db: Session, exclude_case_id: int | None = None) -> SupplyState:
             state.in_transit_eta[reply.payload["sku_id"]] = eta
         else:
             state.po_eta_override[reply.payload["po_ref"]] = eta
-    for po in _tasks(db, "po"):
+    for reply in list_tasks(db, "capacity_reply"):
+        if reply.status == "active":
+            state.capacity_reply[reply.payload["product_id"]] = int(reply.payload["available_qty"])
+    for po in list_tasks(db, "po"):
         if po.status != "cancelled":
             state.extra_pos.append({**po.payload, "ref": f"PO-{po.id}"})
-    for case in _tasks(db, "case"):
+    for case in list_tasks(db, "case"):
         if case.status in COMMITTED and case.id != exclude_case_id and case.payload.get("commit_demand", True):
             for line in case.payload["skus"]:
                 state.committed_campaigns.append(
@@ -128,7 +128,7 @@ def create_case(db: Session, spec: dict) -> Task:
     if pd.to_datetime(spec["end_date"]) < pd.to_datetime(spec["start_date"]):
         raise WorkflowError("종료일이 시작일보다 빠릅니다.")
 
-    plan = next((p for p in campaign_case.plans() if p["plan_id"] == spec.get("plan_id")), None)
+    plan = next((p for p in campaign_case_service.plans() if p["plan_id"] == spec.get("plan_id")), None)
     title = plan["campaign_name"] if plan else spec.get("title") or "캠페인 검토"
     case = Task(
         kind="case",
@@ -136,8 +136,7 @@ def create_case(db: Session, spec: dict) -> Task:
         status=RECEIVED,
         payload=_jsonable({**spec, "campaign_id": plan["campaign_id"] if plan else None, "rejected_options": [], "conditions": [], "commit_demand": True}),
     )
-    db.add(case)
-    db.flush()
+    add_task(db, case)
     log(db, case.id, spec.get("author") or "마케팅팀", "접수", "캠페인 계획과 수요 가정 접수", {"skus": spec["skus"], "demand_as_of": spec.get("demand_as_of")})
     run_check(db, case)
     return case
@@ -157,14 +156,17 @@ def _signature(check: dict | None) -> list:
 
 
 def run_check(db: Session, case: Task, actor: str = "system", reason: str = "") -> dict:
-    result = _jsonable(campaign_case.evaluate(case.payload, build_state(db, exclude_case_id=case.id)))
+    result = _jsonable(campaign_case_service.evaluate(case.payload, build_state(db, exclude_case_id=case.id)))
     _patch(case, check=result)
 
     material_gaps = [g for g in result["info_gaps"] if g["material"]]
-    open_confirms = {w.payload.get("sku_id") for w in _tasks(db, "work_item", case_id=case.id, type="eta_confirm") if w.status != "done"}
+    open_eta = {w.payload.get("sku_id") for w in list_tasks(db, "work_item", case_id=case.id, type="eta_confirm") if w.status != "done"}
+    open_capacity = {w.payload.get("product_id") for w in list_tasks(db, "work_item", case_id=case.id, type="capacity_confirm") if w.status != "done"}
     for gap in material_gaps:
-        if gap["sku_id"] not in open_confirms:
+        if gap["type"] == "in_transit_eta" and gap["sku_id"] not in open_eta:
             _work_item(db, case, "SCM", f"{gap['sku_id']} 이동중 물량 입고예정일 확인 요청", "eta_confirm", sku_id=gap["sku_id"])
+        elif gap["type"] == "production_capacity" and gap["product_id"] not in open_capacity:
+            _work_item(db, case, "Corevia 생산", f"{gap['product_name']} 라인 추가 생산 가능 수량 회신", "capacity_confirm", product_id=gap["product_id"])
 
     if case.status in {RECEIVED, INFO_NEEDED, CHECKED}:
         case.status = INFO_NEEDED if material_gaps else CHECKED
@@ -221,6 +223,13 @@ def request_approval(db: Session, case: Task, option_key: str, requester: str, n
     option = next((o for o in check["options"] if o["key"] == option_key), None)
     if option is None or not option["applicable"]:
         raise WorkflowError("지금 상태에서 고를 수 없는 대안입니다.")
+    if option_key == "extra_po":
+        capacity = option["details"]["capacity"]
+        if capacity["status"] == production_capacity_service.NEEDS_CONFIRMATION:
+            names = ", ".join(l["product_name"] for l in capacity["lines"] if not l["ok"])
+            raise WorkflowError(f"추가 발주 수량이 Corevia {names} 라인의 추정 여력을 넘습니다. Corevia 생산계획팀의 회신을 받은 뒤 상신하세요.")
+        if not option["details"]["lines"]:
+            raise WorkflowError("Corevia 가 회신한 생산 가능 수량으로는 낼 수 있는 발주가 없습니다.")
 
     approval = Task(
         kind="approval",
@@ -228,8 +237,7 @@ def request_approval(db: Session, case: Task, option_key: str, requester: str, n
         status="pending",
         payload=_jsonable({"case_id": case.id, "option_key": option_key, "option": option, "approver": option["route"]["approver"], "rule": option["route"]["rule"], "requester": requester, "note": note}),
     )
-    db.add(approval)
-    db.flush()
+    add_task(db, approval)
     _patch(case, selected_option=option_key, approval_id=approval.id)
     case.status = PENDING
     log(db, case.id, requester, "승인 상신", f"{option['title']} → {option['route']['approver']} ({option['route']['rule']})", {"approval_id": approval.id, "feasible": option["feasible"], "note": note})
@@ -281,10 +289,13 @@ def _execute(db: Session, case: Task, option: dict) -> None:
     if key == "extra_po":
         for line in details["lines"]:
             po = Task(kind="po", title=f"추가 발주 {line['sku_id']} {line['qty']:,}개", status="draft", payload=_jsonable({**line, "case_id": case.id, "eta_confirmed": False}))
-            db.add(po)
-            db.flush()
+            add_task(db, po)
             log(db, case.id, "system", "발주 생성", f"PO-{po.id} {line['sku_id']} {line['qty']:,}개 {line['amount_krw']:,}원, 입고예정 {line['eta']}(가정)", {"po_id": po.id})
             _work_item(db, case, "SCM", f"PO-{po.id} 발주서 작성·전달", "po_send", po_id=po.id)
+        for line in details["capacity"]["lines"]:
+            qty = sum(l["qty"] for l in details["lines"] if l["sku_id"] in line["sku_ids"])
+            if qty:
+                _work_item(db, case, "Corevia 생산", f"{line['product_name']} 라인({line['plant_id']} {line['line_id']}) {qty:,}개 생산 일정 편성", "production_schedule", product_id=line["product_id"])
         _work_item(db, case, "재무", f"추가 발주대금 {details['total_amount_krw']:,}원 ({details['payment_due_date']} 지급) 자금계획 반영", "cash_plan")
     elif key == "shift":
         before = {"start_date": case.payload["start_date"], "end_date": case.payload["end_date"]}
@@ -317,7 +328,7 @@ def set_work_status(db: Session, item: Task, status: str, actor: str = "") -> Ta
     log(db, case.id, actor or item.payload["dept"], "작업 상태 변경", f"{item.title} → {status}", {"work_item_id": item.id})
 
     if status == "done" and item.payload["type"] == "po_send":
-        po = db.get(Task, item.payload["po_id"])
+        po = get_task(db, item.payload["po_id"])
         po.status = "ordered"
         log(db, case.id, "system", "발주 상태 변경", f"PO-{po.id} 발주 전달 완료(모의) — 공급자 회신 대기")
         _work_item(db, case, "SCM", f"PO-{po.id} 공급자 입고예정 회신 확인", "po_eta_confirm", po_id=po.id)
@@ -327,7 +338,7 @@ def set_work_status(db: Session, item: Task, status: str, actor: str = "") -> Ta
 
 
 def _close_if_finished(db: Session, case: Task) -> None:
-    items = _tasks(db, "work_item", case_id=case.id)
+    items = list_tasks(db, "work_item", case_id=case.id)
     if case.status == EXECUTING and items and all(w.status == "done" for w in items):
         case.status = DONE
         log(db, case.id, "system", "완료", "후속 작업이 모두 끝났습니다.")
@@ -340,29 +351,45 @@ def apply_change(db: Session, type_: str, data: dict, actor: str) -> dict:
     """새 사건을 반영하고, 영향을 받는 검토 건을 다시 확인한다."""
     if type_ == "in_transit_eta":
         sku_id, eta = data["sku_id"], str(data["eta"])
-        for old in _tasks(db, "eta_reply", target="in_transit", sku_id=sku_id):
+        for old in list_tasks(db, "eta_reply", target="in_transit", sku_id=sku_id):
             old.status = "superseded"
-        db.add(Task(kind="eta_reply", title=f"{sku_id} 이동중 물량 입고예정 {eta}", status="active", payload={"target": "in_transit", "sku_id": sku_id, "eta": eta, "mock": True}))
-        for w in _tasks(db, "work_item", type="eta_confirm", sku_id=sku_id):
+        add_task(db, Task(kind="eta_reply", title=f"{sku_id} 이동중 물량 입고예정 {eta}", status="active", payload={"target": "in_transit", "sku_id": sku_id, "eta": eta, "mock": True}))
+        for w in list_tasks(db, "work_item", type="eta_confirm", sku_id=sku_id):
             if w.status != "done":
                 w.status = "done"
                 log(db, w.payload["case_id"], actor, "회신 수신", f"{sku_id} 이동중 물량 입고예정일 {eta} (모의 회신)", {"work_item_id": w.id})
         reason = f"{sku_id} 이동중 물량 입고예정일 회신 {eta}"
     elif type_ == "po_eta":
         po_ref, eta = data["po_ref"], str(data["eta"])
-        for old in _tasks(db, "eta_reply", target="po", po_ref=po_ref):
+        for old in list_tasks(db, "eta_reply", target="po", po_ref=po_ref):
             old.status = "superseded"
-        db.add(Task(kind="eta_reply", title=f"{po_ref} 입고예정 {eta}", status="active", payload={"target": "po", "po_ref": po_ref, "eta": eta, "mock": True}))
+        add_task(db, Task(kind="eta_reply", title=f"{po_ref} 입고예정 {eta}", status="active", payload={"target": "po", "po_ref": po_ref, "eta": eta, "mock": True}))
         if po_ref.startswith("PO-"):
-            po = db.get(Task, int(po_ref[3:]))
+            po = get_task(db, int(po_ref[3:]))
             if po is None or po.kind != "po":
                 raise WorkflowError(f"없는 발주입니다: {po_ref}")
             _patch(po, eta=eta, eta_confirmed=True)
             po.status = "confirmed"
-            for w in _tasks(db, "work_item", type="po_eta_confirm", po_id=po.id):
+            for w in list_tasks(db, "work_item", type="po_eta_confirm", po_id=po.id):
                 w.status = "done"
             log(db, po.payload["case_id"], actor, "회신 수신", f"{po_ref} 입고예정일 {eta} (모의 회신)")
         reason = f"{po_ref} 입고예정일 회신 {eta}"
+    elif type_ == "capacity_reply":
+        product_id, qty = data["product_id"], int(data["available_qty"])
+        known = {line["product_id"]: line for line in production_capacity_service.lines()}
+        if product_id not in known:
+            raise WorkflowError(f"없는 Corevia 제품군입니다: {product_id}")
+        if qty < 0:
+            raise WorkflowError("생산 가능 수량은 0 이상이어야 합니다.")
+        for old in list_tasks(db, "capacity_reply", product_id=product_id):
+            old.status = "superseded"
+        name = known[product_id]["product_name"]
+        add_task(db, Task(kind="capacity_reply", title=f"{name} 라인 추가 생산 가능 {qty:,}개", status="active", payload={"product_id": product_id, "available_qty": qty, "mock": True}))
+        for w in list_tasks(db, "work_item", type="capacity_confirm", product_id=product_id):
+            if w.status != "done":
+                w.status = "done"
+                log(db, w.payload["case_id"], actor, "회신 수신", f"Corevia {name} 라인 리드타임 안 추가 생산 가능 {qty:,}개 (모의 회신)", {"work_item_id": w.id})
+        reason = f"Corevia {name} 라인 생산 여력 회신 {qty:,}개"
     elif type_ == "demand_revision":
         case = get_case(db, int(data["case_id"]))
         before = case.payload["skus"]
@@ -371,11 +398,11 @@ def apply_change(db: Session, type_: str, data: dict, actor: str) -> dict:
         log(db, case.id, actor, "수요 가정 정정", f"{data['sku_id']} 증가율 → {data['uplift_pct']}%", {"before": before, "after": after})
         reason = f"검토 건 #{case.id} 수요 가정 정정"
     else:
-        raise WorkflowError("type 은 in_transit_eta / po_eta / demand_revision 중 하나입니다.")
+        raise WorkflowError("type 은 in_transit_eta / po_eta / capacity_reply / demand_revision 중 하나입니다.")
 
     db.flush()
     affected = recheck_open_cases(db, reason)
-    for case in _tasks(db, "case"):
+    for case in list_tasks(db, "case"):
         _close_if_finished(db, case)
     return {"reason": reason, "rechecked": affected}
 
@@ -383,7 +410,7 @@ def apply_change(db: Session, type_: str, data: dict, actor: str) -> dict:
 def recheck_open_cases(db: Session, reason: str, skip_case_id: int | None = None) -> list[dict]:
     """끝나지 않은 검토 건을 다시 확인하고, 결론이 달라진 건은 재검토 상태로 돌린다."""
     out = []
-    for case in _tasks(db, "case"):
+    for case in list_tasks(db, "case"):
         if case.status == DONE or case.id == skip_case_id:
             continue
         before = _signature(case.payload.get("check"))
@@ -392,7 +419,7 @@ def recheck_open_cases(db: Session, reason: str, skip_case_id: int | None = None
         changed = before != after
         if changed and case.status in {JUDGED, PENDING, EXECUTING}:
             if case.status == PENDING:
-                approval = db.get(Task, case.payload.get("approval_id"))
+                approval = get_task(db, case.payload.get("approval_id"))
                 if approval and approval.status == "pending":
                     approval.status = "withdrawn"
             previous = case.status
@@ -405,5 +432,5 @@ def recheck_open_cases(db: Session, reason: str, skip_case_id: int | None = None
 
 def reset(db: Session) -> None:
     """시연을 처음부터 다시 하기 위해 시스템이 만든 기록을 모두 지운다. 원본 데이터는 건드리지 않는다."""
-    db.query(Event).delete()
-    db.query(Task).delete()
+    event_repository.delete_all_events(db)
+    task_repository.delete_all_tasks(db)

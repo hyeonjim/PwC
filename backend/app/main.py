@@ -1,7 +1,7 @@
 """FastAPI 진입점.
 
 - /healthz : AXHub 상태 확인용. DB·AI 를 부르지 않고 바로 응답한다.
-- /api/... : 백엔드 API
+- /api/v1/... : 백엔드 API
 - /docs    : 자동 API 문서
 - /        : Next.js 정적 화면 (frontend/out 이 있을 때)
 """
@@ -11,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.router import api_router
-from app.config import get_settings
+from app.api.v1.router import api_router
+from app.core.config import get_settings
 
 settings = get_settings()
 
@@ -32,7 +32,7 @@ def healthz() -> str:
     return "ok"
 
 
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router, prefix="/api/v1")
 
 # 화면 파일은 맨 마지막에 연결한다. 위 경로들이 먼저 처리된다.
 if settings.static_dir.is_dir():

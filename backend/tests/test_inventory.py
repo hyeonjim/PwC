@@ -1,6 +1,6 @@
 """재고 커버 검산. 원본 sku_inventory_ms.stock_cover_weeks 와 공식 계산식 결과가 같아야 한다."""
 
-from app.engine.inventory import stock_cover
+from app.services.inventory_service import stock_cover
 
 
 def test_stock_cover_matches_source_column():

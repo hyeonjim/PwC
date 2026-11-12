@@ -22,10 +22,10 @@ from typing import Any
 
 import pandas as pd
 
-from app.config import get_settings
-from app.data.loader import read_table
-from app.engine.bizcal import week_start
-from app.engine.inventory import INVENTORY, SKU_MASTER, trailing_4w_avg_demand
+from app.core.config import get_settings
+from app.repositories.raw_data_repository import read_table
+from app.core.business_calendar import week_start
+from app.services.inventory_service import INVENTORY, SKU_MASTER, trailing_4w_avg_demand
 
 PURCHASE_ORDERS = "02_masil/inventory/sc_purchase_orders_ms.csv"
 DEFAULT_WEEKS = 16
@@ -43,6 +43,7 @@ class SupplyState:
     po_eta_override: dict[str, date] = field(default_factory=dict)  # 발주번호 → 바뀐 입고예정일
     extra_pos: list[dict] = field(default_factory=list)  # 시스템에서 승인된 추가 발주
     committed_campaigns: list[dict] = field(default_factory=list)  # 승인된 캠페인 수요 약속
+    capacity_reply: dict[str, int] = field(default_factory=dict)  # Corevia 제품군 → 회신받은 추가 생산 가능 수량
 
 
 def sku_table() -> pd.DataFrame:

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 def raw_path(relative: str) -> Path:
@@ -26,9 +26,3 @@ def read_table(relative: str) -> pd.DataFrame:
     """원본 CSV 를 DataFrame 으로 읽는다. 결과는 복사해서 쓰도록 호출 쪽에서 주의한다."""
     return pd.read_csv(raw_path(relative), sep="|", encoding="utf-8")
 
-
-def list_tables() -> list[str]:
-    root = get_settings().raw_data_dir
-    if not root.is_dir():
-        return []
-    return sorted(p.relative_to(root).as_posix() for p in root.rglob("*.csv"))

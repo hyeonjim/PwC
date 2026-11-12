@@ -10,10 +10,3 @@ def test_healthz_is_plain_ok():
     assert res.status_code == 200
     assert res.text == "ok"
 
-
-def test_api_health_reports_data_tables():
-    res = client.get("/api/health")
-    assert res.status_code == 200
-    body = res.json()
-    assert body["raw_tables"] == 50  # 원본 CSV 50개가 모두 보이는지
-    assert body["db"] == "ok"

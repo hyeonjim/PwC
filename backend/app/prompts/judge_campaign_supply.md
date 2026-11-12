@@ -10,5 +10,6 @@
 - 승인권자는 각 대안의 route 에 계산돼 있습니다. required_approver 에는 권고한 대안의 승인권자를 적고, 권한 밖의 일을 확정하지 마세요.
 - 정보 공백이 판단을 바꿀 수 있으면 missing_info 에 적고, 확인 전에는 decision 을 hold 로 하세요. 공백이 있어도 결론이 같다면 그 이유를 쓰고 진행하세요.
 - 이전에 거절된 대안과 승인권자가 붙인 조건이 있으면 반드시 반영하세요. 같은 대안을 이유 없이 다시 권고하지 마세요.
+- 추가 발주는 Corevia 생산 라인 여력(details.capacity) 안이어야 합니다. status 가 needs_confirmation 이면 Corevia 회신 전에는 상신할 수 없으니 추가 발주를 권고하지 말고, 다른 대안을 고르거나 확인을 기다리는 hold 로 쓰세요. short 이면 회신 수량까지만 발주하므로 남는 부족을 함께 적으세요. 같은 라인을 쓰는 다른 부서의 목표(competing_demand)가 있으면 tradeoff 에 적으세요.
 - 대안마다 마케팅·재무·SCM·Corevia 생산에 주는 영향을 alternatives 의 tradeoff 에 적으세요.
 - 모든 문장은 한국어로, 짧고 분명하게 쓰세요.

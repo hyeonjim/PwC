@@ -17,11 +17,11 @@ from datetime import date, timedelta
 
 import pandas as pd
 
-from app.config import get_settings
-from app.data.loader import read_table
-from app.engine import approval, cash
-from app.engine.bizcal import week_start
-from app.engine.supply import (
+from app.core.config import get_settings
+from app.repositories.raw_data_repository import read_table
+from app.services import approval_route_service, cash_service, production_capacity_service
+from app.core.business_calendar import week_start
+from app.services.supply_service import (
     DEFAULT_WEEKS,
     SupplyState,
     project,
@@ -75,7 +75,7 @@ def total_plan_budget() -> int:
     return int(read_table(BUDGET_PLANS)["requested_budget_krw"].sum())
 
 
-def _extra_outflows(state: SupplyState) -> list[dict]:
+def extra_outflows(state: SupplyState) -> list[dict]:
     return [
         {"date": po["payment_due_date"], "amount_krw": po["amount_krw"], "label": f"추가 발주대금 {po['sku_id']}", "ref": po["ref"]}
         for po in state.extra_pos
@@ -90,7 +90,7 @@ def evaluate(spec: dict, state: SupplyState | None = None) -> dict:
     plan = next((p for p in plans() if p["plan_id"] == spec.get("plan_id")), None)
     master = sku_table().set_index("sku_id")
 
-    sim = cash.simulate(_extra_outflows(state))
+    sim = cash_service.simulate(extra_outflows(state))
     windows = sim["breach_windows"]
 
     # ── SKU 별 확인 ─────────────────────────────────────────────
@@ -130,6 +130,7 @@ def evaluate(spec: dict, state: SupplyState | None = None) -> dict:
             info_gaps.append(
                 {
                     "key": f"in_transit_eta:{sku_id}",
+                    "type": "in_transit_eta",
                     "sku_id": sku_id,
                     "material": best != worst,
                     "shortage_if_arrives_now_qty": best,
@@ -148,9 +149,9 @@ def evaluate(spec: dict, state: SupplyState | None = None) -> dict:
     proceed_ok = all(s["shortage_in_campaign_qty"] == 0 for s in skus)
 
     campaign_route = (
-        approval.campaign_approver(plan["requested_budget_krw"], total_plan_budget(), plan["settlement_date"], windows)
+        approval_route_service.campaign_approver(plan["requested_budget_krw"], total_plan_budget(), plan["settlement_date"], windows)
         if plan
-        else approval.plan_change_approver()
+        else approval_route_service.plan_change_approver()
     )
 
     options = [
@@ -160,6 +161,7 @@ def evaluate(spec: dict, state: SupplyState | None = None) -> dict:
         _opt_cap(spec, state, start, end, proceed_ok),
         _opt_swap(spec, state, start, end, proceed_ok),
     ]
+    info_gaps += _capacity_gaps(options[1])
 
     return {
         "as_of": as_of.isoformat(),
@@ -178,6 +180,31 @@ def evaluate(spec: dict, state: SupplyState | None = None) -> dict:
         "options": options,
         "conclusion": "ok" if proceed_ok else "shortage",
     }
+
+
+def _capacity_gaps(extra_po: dict) -> list[dict]:
+    """Corevia 생산 여력이 추정으로는 모자란 라인. 확인하면 추가 발주가 가능해질 때만 판단에 영향이 있다."""
+    capacity = extra_po["details"].get("capacity")
+    if not capacity or capacity["status"] != production_capacity_service.NEEDS_CONFIRMATION:
+        return []
+    material = extra_po["details"]["without_capacity_check"]["feasible"]
+    return [
+        {
+            "key": f"production_capacity:{line['product_id']}",
+            "type": "production_capacity",
+            "product_id": line["product_id"],
+            "product_name": line["product_name"],
+            "sku_id": None,
+            "material": material,
+            "message": f"추가 발주 {', '.join(line['sku_ids'])} 를 Corevia 가 리드타임 안에 만들 수 있는지 확인되지 않았습니다. "
+            + production_capacity_service.describe(line)
+            + ".",
+            "next_action": "Corevia 생산계획팀에 추가 생산 가능 수량 확인 요청"
+            + ("" if material else " (추가 발주를 고를 때만 필요 — 확인돼도 캠페인 기간 부족은 남습니다)"),
+        }
+        for line in capacity["lines"]
+        if not line["ok"] and line["basis"] == "estimate"
+    ]
 
 
 # ── 대안 ────────────────────────────────────────────────────────
@@ -207,6 +234,18 @@ def _opt_proceed(skus: list[dict], ok: bool, route: dict) -> dict:
     }
 
 
+def _po_outcome(lines: list[dict], short_skus: list[dict], state: SupplyState, start, end) -> dict:
+    """발주 줄들을 넣었을 때 캠페인 기간에 남는 부족과 현금 전망."""
+    trial = deepcopy(state)
+    trial.extra_pos.extend(lines)
+    residual = 0
+    for s in short_skus:
+        campaign = [{"start_date": start, "end_date": end, "uplift_pct": s["uplift_pct"]}]
+        residual += shortage_between(project(s["sku_id"], campaign, trial), start, end)
+    after = cash_service.simulate(extra_outflows(trial))
+    return {"residual": residual, "after": after, "total": sum(l["amount_krw"] for l in lines)}
+
+
 def _opt_extra_po(spec, state, short_skus, sim, as_of, start, end) -> dict:
     if not short_skus:
         return {
@@ -216,22 +255,21 @@ def _opt_extra_po(spec, state, short_skus, sim, as_of, start, end) -> dict:
             "feasible": False,
             "summary": "캠페인 기간에 부족 수량이 없어 추가 발주가 필요하지 않습니다.",
             "details": {},
-            "route": approval.po_approver(as_of, []),
+            "route": approval_route_service.po_approver(as_of, []),
             "affected_depts": [],
         }
 
     unit_cost = {po["sku_id"]: po["unit_cost_krw"] for po in source_pos()}
     payment_due = as_of + timedelta(days=PAYMENT_TERM_DAYS)
-    trial = deepcopy(state)
-    lines = []
-    for s in short_skus:
-        qty = math.ceil(s["shortage_in_campaign_qty"] / s["moq"]) * s["moq"]
+
+    def make_line(s: dict, qty: int) -> dict:
         eta = as_of + timedelta(weeks=s["lead_time_weeks"])
-        line = {
+        return {
             "ref": f"신규-{s['sku_id']}",
             "sku_id": s["sku_id"],
             "qty": qty,
             "moq": s["moq"],
+            "lead_time_weeks": s["lead_time_weeks"],
             "order_date": as_of.isoformat(),
             "eta": eta.isoformat(),
             "amount_krw": qty * unit_cost[s["sku_id"]],
@@ -240,31 +278,53 @@ def _opt_extra_po(spec, state, short_skus, sim, as_of, start, end) -> dict:
             "arrives_before_stockout": s["campaign_first_stockout_week"] is None
             or week_start(eta) <= _d(s["campaign_first_stockout_week"]),
         }
-        lines.append(line)
-        trial.extra_pos.append(line)
 
-    residual = 0
-    for s in short_skus:
-        campaign = [{"start_date": start, "end_date": end, "uplift_pct": s["uplift_pct"]}]
-        residual += shortage_between(project(s["sku_id"], campaign, trial), start, end)
+    # 1) Masil 재고만 보고 필요한 수량 (확장 전 판단)
+    needed = [make_line(s, math.ceil(s["shortage_in_campaign_qty"] / s["moq"]) * s["moq"]) for s in short_skus]
+    unconstrained = _po_outcome(needed, short_skus, state, start, end)
 
-    total = sum(l["amount_krw"] for l in lines)
-    after = cash.simulate(
-        [
-            {"date": po["payment_due_date"], "amount_krw": po["amount_krw"], "label": f"추가 발주대금 {po['sku_id']}", "ref": po["ref"]}
-            for po in trial.extra_pos
-        ]
-    )
-    route = approval.po_approver(payment_due, after["breach_windows"])
+    # 2) Corevia 생산 여력 확인 (확장)
+    capacity = production_capacity_service.check(needed, state)
+    lines = needed
+    if capacity["status"] == production_capacity_service.SHORT:
+        # Corevia 가 회신한 수량까지만 낸다(MOQ 단위). 못 내는 SKU 는 뺀다.
+        allocations = {sku: qty for line in capacity["lines"] for sku, qty in line["allocations"].items()}
+        lines = [make_line(s, allocations[s["sku_id"]]) for s in short_skus if allocations[s["sku_id"]] > 0]
+    outcome = unconstrained if lines is needed else _po_outcome(lines, short_skus, state, start, end)
+    residual, after, total = outcome["residual"], outcome["after"], outcome["total"]
+
+    route = approval_route_service.po_approver(payment_due, after["breach_windows"])
     late = [l for l in lines if not l["arrives_before_stockout"]]
-    summary = f"{len(lines)}개 SKU 총 {sum(l['qty'] for l in lines):,}개, {total:,}원 발주."
+    capacity_ok = capacity["status"] == production_capacity_service.OK
+    over = [l for l in capacity["lines"] if not l["ok"]]
+
+    if lines:
+        summary = f"{len(lines)}개 SKU 총 {sum(l['qty'] for l in lines):,}개, {total:,}원 발주."
+    else:
+        summary = "Corevia 가 회신한 생산 가능 수량으로는 MOQ 한 단위도 낼 수 없습니다."
     if residual > 0:
-        summary += f" 리드타임 때문에 입고가 늦어 캠페인 기간 부족 {residual:,}개는 남습니다."
+        summary += f" 캠페인 기간 부족 {residual:,}개는 남습니다."
+    if capacity["status"] == production_capacity_service.NEEDS_CONFIRMATION:
+        summary += " Corevia 생산 여력을 넘어 확인 전에는 상신할 수 없습니다: " + "; ".join(
+            production_capacity_service.describe(l) for l in over
+        )
+    elif capacity["status"] == production_capacity_service.SHORT:
+        summary += " Corevia 회신 기준: " + "; ".join(production_capacity_service.describe(l) for l in over)
+
+    corevia_impacts = [
+        {
+            "dept": f"Corevia 생산({l['plant_id']} {l['line_id']})",
+            "impact": production_capacity_service.describe(l)
+            + ("" if l["ok"] else ". 추가 생산하려면 다른 생산 일정을 밀거나 증산해야 합니다.")
+            + (f" {l['competing_demand']}" if l["competing_demand"] else ""),
+        }
+        for l in capacity["lines"]
+    ]
     return {
         "key": "extra_po",
         "title": "추가 발주",
         "applicable": True,
-        "feasible": residual == 0,
+        "feasible": residual == 0 and capacity_ok and bool(lines),
         "summary": summary,
         "details": {
             "lines": lines,
@@ -274,16 +334,23 @@ def _opt_extra_po(spec, state, short_skus, sim, as_of, start, end) -> dict:
             "late_skus": [l["sku_id"] for l in late],
             "cash_min_before_krw": sim["min_closing_krw"],
             "cash_min_after_krw": after["min_closing_krw"],
-            "payment_in_breach_window": cash.in_breach_window(payment_due, after["breach_windows"]),
+            "payment_in_breach_window": cash_service.in_breach_window(payment_due, after["breach_windows"]),
+            "capacity": capacity,
+            # 생산 여력을 보지 않았을 때의 판단 (확장 전후 비교용)
+            "without_capacity_check": {
+                "feasible": unconstrained["residual"] == 0,
+                "qty": sum(l["qty"] for l in needed),
+                "residual_shortage_in_campaign_qty": unconstrained["residual"],
+            },
         },
         "route": route,
         "affected_depts": [
             {
                 "dept": "재무",
                 "impact": f"전망 최저 잔액이 {sim['min_closing_krw']:,}원 → {after['min_closing_krw']:,}원으로 내려갑니다. "
-                + ("지급일이 30억 하회 예상 구간 안입니다." if route["approver"] == approval.GROUP_CEO else "지급일은 하회 예상 구간 밖입니다."),
+                + ("지급일이 30억 하회 예상 구간 안입니다." if route["approver"] == approval_route_service.GROUP_CEO else "지급일은 하회 예상 구간 밖입니다."),
             },
-            {"dept": "Corevia 생산", "impact": "리드타임 안에 생산 여력이 있는지는 확인되지 않았습니다(정보 공백)."},
+            *corevia_impacts,
         ],
     }
 
@@ -300,7 +367,7 @@ def _opt_shift(spec, state, start, end, proceed_ok, plan) -> dict:
     base = {
         "key": "shift",
         "title": "캠페인 시작 연기",
-        "route": approval.plan_change_approver(),
+        "route": approval_route_service.plan_change_approver(),
     }
     if proceed_ok:
         return {**base, "applicable": False, "feasible": False, "summary": "품절이 없어 연기할 필요가 없습니다.", "details": {}, "affected_depts": []}
@@ -347,7 +414,7 @@ def _opt_shift(spec, state, start, end, proceed_ok, plan) -> dict:
 
 
 def _opt_cap(spec, state, start, end, proceed_ok) -> dict:
-    base = {"key": "cap", "title": "캠페인 물량 상한", "route": approval.plan_change_approver()}
+    base = {"key": "cap", "title": "캠페인 물량 상한", "route": approval_route_service.plan_change_approver()}
     if proceed_ok:
         return {**base, "applicable": False, "feasible": False, "summary": "품절이 없어 물량을 줄일 필요가 없습니다.", "details": {}, "affected_depts": []}
 
@@ -383,7 +450,7 @@ def _opt_cap(spec, state, start, end, proceed_ok) -> dict:
 
 
 def _opt_swap(spec, state, start, end, proceed_ok) -> dict:
-    base = {"key": "swap", "title": "상품 구성 변경", "route": approval.plan_change_approver()}
+    base = {"key": "swap", "title": "상품 구성 변경", "route": approval_route_service.plan_change_approver()}
     if proceed_ok:
         return {**base, "applicable": False, "feasible": False, "summary": "품절이 없어 상품을 바꿀 필요가 없습니다.", "details": {}, "affected_depts": []}
 

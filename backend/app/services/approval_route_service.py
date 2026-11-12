@@ -10,7 +10,7 @@
 
 from datetime import date
 
-from app.engine.cash import in_breach_window
+from app.services.cash_service import in_breach_window
 
 GROUP_CEO = "그룹 CEO"
 MASIL_CEO = "Masil 대표"

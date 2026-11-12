@@ -11,7 +11,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
+BACKEND_DIR = Path(__file__).resolve().parents[2]  # backend/
 REPO_ROOT = BACKEND_DIR.parent
 
 
@@ -66,10 +66,6 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-
-    @property
-    def ai_configured(self) -> bool:
-        return bool(self.anthropic_api_key)
 
 
 @lru_cache

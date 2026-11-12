@@ -7,7 +7,7 @@ Weeks of Supply = available_qty / 최근 4주 평균 주간판매량
 
 import pandas as pd
 
-from app.data.loader import read_table
+from app.repositories.raw_data_repository import read_table
 
 INVENTORY = "02_masil/inventory/sku_inventory_ms.csv"
 WEEKLY_SALES = "02_masil/inventory/sku_weekly_sales_ms.csv"

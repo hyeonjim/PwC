@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import anthropic
 
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 @lru_cache

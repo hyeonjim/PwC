@@ -8,8 +8,8 @@ Next.js(화면) + FastAPI(백엔드)를 컨테이너 하나로 묶어 AXHub 앱 
 |---|---|
 | `01_참가자_배포용/` | 대회 원본 자료. **읽기만 하고 수정하지 않음** |
 | `data/assumptions/` | 내가 만든 가정·매핑·합성 데이터·모의 회신 |
-| `backend/` | FastAPI. `app/api`(엔드포인트) · `app/engine`(계산) · `app/ai`(Claude 판단) · `app/data`(원본 CSV 읽기) · `app/db`(테이블) |
-| `frontend/` | Next.js 정적 내보내기. 데이터는 모두 `/api` 에서 받음 |
+| `backend/` | FastAPI. `app/api/v1`(엔드포인트) · `app/schemas`(요청·응답 형식) · `app/services`(계산·업무 흐름·AI 판단) · `app/repositories`(DB·원본 CSV 읽기) · `app/models`(테이블). 규칙은 `backend/CLAUDE.md` |
+| `frontend/` | Next.js 정적 내보내기. 데이터는 모두 `/api/v1` 에서 받음. 규칙은 `frontend/CLAUDE.md` |
 
 ## 처음 한 번
 

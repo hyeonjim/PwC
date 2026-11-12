@@ -1,7 +1,9 @@
 """AI 판단 입구.
 
-계산 엔진이 만든 근거(context)를 받아 Claude 에게 판단을 요청하고,
+흐름: 계산 결과(근거) → Claude 판단(구조화된 JSON) → DB 기록 → 사람 승인
+계산 서비스가 만든 근거(context)를 받아 Claude 에게 판단을 요청하고,
 Recommendation 형식으로 검증된 결과를 돌려준다.
+키가 없거나 호출이 실패하면 규칙 기반 예비 판단으로 넘어가 시연이 멈추지 않게 한다.
 """
 
 import json
@@ -10,12 +12,30 @@ from typing import Any
 
 import anthropic
 
-from app.ai.client import get_client
-from app.ai.fallback import rule_based_judgment
-from app.ai.schemas import JudgmentResult, Recommendation
-from app.config import get_settings
+from app.core.ai_client import get_client
+from app.core.config import get_settings
+from app.schemas.judgment import Evidence, JudgmentResult, Recommendation
 
-PROMPTS_DIR = Path(__file__).parent / "prompts"
+PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
+
+
+def rule_based_judgment(reason: str, required_approver: str = "담당 승인권자") -> JudgmentResult:
+    """규칙 기반 예비 판단. 스스로 결론을 내리지 않고 '보류 + 사람 검토'로 돌려서,
+    AI 없이도 업무 흐름이 끊기지 않게만 한다."""
+    return JudgmentResult(
+        source="rule",
+        recommendation=Recommendation(
+            decision="hold",
+            summary="AI 판단을 받지 못해 보류합니다. 계산 결과를 보고 담당자가 직접 판단해 주세요.",
+            recommended_option="",
+            evidence=[Evidence(statement=f"AI 판단 불가 사유: {reason}", source_type="fact", source_ref="system")],
+            alternatives=[],
+            missing_info=["AI 판단 결과"],
+            required_approver=required_approver,
+            confidence="low",
+        ),
+        error=reason,
+    )
 
 
 def load_prompt(name: str) -> str:

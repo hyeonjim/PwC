@@ -3,8 +3,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from app.config import get_settings
-from app.db import models  # noqa: F401  테이블 정의를 불러와 metadata 에 등록
+from app.core.config import get_settings
+from app import models  # noqa: F401  테이블 정의를 불러와 metadata 에 등록
 from app.db.base import Base
 
 config = context.config

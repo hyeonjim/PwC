@@ -8,7 +8,8 @@ _db = Path(tempfile.mkdtemp(prefix="aurora-test-")) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_db.as_posix()}"
 os.environ["ANTHROPIC_API_KEY"] = ""  # 테스트에서는 AI 를 부르지 않는다(규칙 기반 예비 판단)
 
-from app.db import models  # noqa: E402,F401  (테이블 정의 등록)
-from app.db.base import Base, engine  # noqa: E402
+from app import models  # noqa: E402,F401  (테이블 정의 등록)
+from app.db.base import Base  # noqa: E402
+from app.db.session import engine  # noqa: E402
 
 Base.metadata.create_all(engine)

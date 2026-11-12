@@ -2,18 +2,30 @@
 
 import { useState } from "react";
 
-import { Empty, Loading, PageTitle, Section, Src, Status } from "@/components/ops/basic";
-import { WeekTable } from "@/components/ops/parts";
+import { LoadingMessage } from "@/components/common/loading-message";
+import { MutedText } from "@/components/common/muted-text";
+import { PageTitle } from "@/components/common/page-title";
+import { Section } from "@/components/common/section";
+import { SourceBadge } from "@/components/common/source-badge";
+import { StatusBadge } from "@/components/common/status-badge";
+import { TableHeaderRow } from "@/components/common/table-header-row";
+import { TextList } from "@/components/common/text-list";
+import { WeeklyProjectionTable } from "@/components/supply/weekly-projection-table";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PO_STATUS, qty, won } from "@/lib/format";
-import type { Projection, Supply } from "@/lib/types";
-import { useApi } from "@/lib/use-api";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { useApi } from "@/hooks/use-api";
+import { formatQuantity, formatWon } from "@/lib/format";
+import { PURCHASE_ORDER_STATUS_LABEL } from "@/lib/labels";
+import type { Projection, Supply } from "@/types/supply";
+
+const SKU_COLUMNS = ["SKU", "분류", "현재고", "주간 수요(4주 평균)", "커버(주)", "이동중", "리드타임", "품절 예상 주", "약속된 캠페인", ""];
+const PRODUCTION_LINE_COLUMNS = ["Corevia 제품군", "공장·라인", "연간 생산능력", "가동률", "주간 여력(추정)", "시스템 추가 발주 사용", "Corevia 회신"];
+const SOURCE_PURCHASE_ORDER_COLUMNS = ["발주", "SKU", "발주일", "수량", "입고예정(가정)", "금액", "대금 지급일"];
 
 export default function SupplyPage() {
   const { data, error } = useApi<Supply>("/supply");
-  const [open, setOpen] = useState<string | null>(null);
-  const projection = useApi<Projection>(open ? `/supply/${open}` : null);
+  const [openSkuId, setOpenSkuId] = useState<string | null>(null);
+  const projection = useApi<Projection>(openSkuId ? `/supply/${openSkuId}` : null);
 
   return (
     <>
@@ -21,119 +33,129 @@ export default function SupplyPage() {
         title="SKU 수요·공급"
         description="SKU 별 재고, 입고 예정, 승인된 캠페인 수요를 한 표에서 봅니다. 승인된 발주와 캠페인은 바로 여기에 반영됩니다."
       />
-      {!data && <Loading error={error} />}
+      {!data && <LoadingMessage error={error} />}
       {data && (
         <>
           <Section
             title="SKU 현황"
             description={
               <>
-                현재고·판매·MOQ·리드타임 <Src type="fact" /> · 품절 예상 주 <Src type="calculation" />
+                현재고·판매·MOQ·리드타임 <SourceBadge type="fact" /> · 품절 예상 주 <SourceBadge type="calculation" />
               </>
             }
           >
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>분류</TableHead>
-                  <TableHead>현재고</TableHead>
-                  <TableHead>주간 수요(4주 평균)</TableHead>
-                  <TableHead>커버(주)</TableHead>
-                  <TableHead>이동중</TableHead>
-                  <TableHead>리드타임</TableHead>
-                  <TableHead>품절 예상 주</TableHead>
-                  <TableHead>약속된 캠페인</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
+              <TableHeaderRow columns={SKU_COLUMNS} />
               <TableBody>
-                {data.skus.map((s) => (
-                  <TableRow key={s.sku_id}>
+                {data.skus.map((sku) => (
+                  <TableRow key={sku.sku_id}>
                     <TableCell>
-                      {s.sku_id} {s.sku_name}
+                      {sku.sku_id} {sku.sku_name}
                     </TableCell>
-                    <TableCell>{s.category}</TableCell>
-                    <TableCell>{qty(s.on_hand_qty)}</TableCell>
-                    <TableCell>{qty(s.avg_weekly_demand_4w)}</TableCell>
+                    <TableCell>{sku.category}</TableCell>
+                    <TableCell>{formatQuantity(sku.on_hand_qty)}</TableCell>
+                    <TableCell>{formatQuantity(sku.avg_weekly_demand_4w)}</TableCell>
                     <TableCell>
-                      {s.cover_weeks}{" "}
-                      {s.below_safety_min ? <Status tone="warn">미달</Status> : s.above_safety_max ? <Status tone="muted">여유</Status> : null}
+                      {sku.cover_weeks}{" "}
+                      {sku.below_safety_min ? <StatusBadge tone="warn">미달</StatusBadge> : sku.above_safety_max ? <StatusBadge tone="muted">여유</StatusBadge> : null}
                     </TableCell>
                     <TableCell>
-                      {qty(s.in_transit_qty)} ({s.in_transit_eta ?? "입고일 미확인"})
+                      {formatQuantity(sku.in_transit_qty)} ({sku.in_transit_eta ?? "입고일 미확인"})
                     </TableCell>
-                    <TableCell>{s.lead_time_weeks}주</TableCell>
-                    <TableCell>{s.first_stockout_week ?? "없음"}</TableCell>
+                    <TableCell>{sku.lead_time_weeks}주</TableCell>
+                    <TableCell>{sku.first_stockout_week ?? "없음"}</TableCell>
                     <TableCell>
-                      {s.committed_campaigns.length === 0
+                      {sku.committed_campaigns.length === 0
                         ? "-"
-                        : s.committed_campaigns.map((c) => `#${c.case_id} ${c.start_date}~${c.end_date} +${c.uplift_pct}%`).join(", ")}
+                        : sku.committed_campaigns.map((campaign) => `#${campaign.case_id} ${campaign.start_date}~${campaign.end_date} +${campaign.uplift_pct}%`).join(", ")}
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => setOpen(open === s.sku_id ? null : s.sku_id)}>
-                        {open === s.sku_id ? "닫기" : "주간 전망"}
+                      <Button size="sm" variant="outline" onClick={() => setOpenSkuId(openSkuId === sku.sku_id ? null : sku.sku_id)}>
+                        {openSkuId === sku.sku_id ? "닫기" : "주간 전망"}
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               커버는 원본 정의대로 현재고만으로 계산합니다(이동중 미포함). 품절 예상 주는 입고일을 아는 물량만 넣은 16주 전망이며, 기준일 이후의 정기 발주는 원본에 없어
-              넣지 않았습니다 <Src type="assumption" />
+              넣지 않았습니다 <SourceBadge type="assumption" />
             </p>
           </Section>
 
-          {open && (
-            <Section title={`${open} 주간 전망`} description="기말재고 = 기초재고 + 입고 − 평시 수요 − 승인된 캠페인 수요">
-              {!projection.data || projection.data.sku_id !== open ? (
-                <Loading error={projection.error} />
+          {openSkuId && (
+            <Section title={`${openSkuId} 주간 전망`} description="기말재고 = 기초재고 + 입고 − 평시 수요 − 승인된 캠페인 수요">
+              {!projection.data || projection.data.sku_id !== openSkuId ? (
+                <LoadingMessage error={projection.error} />
               ) : (
                 <>
-                  <ul className="flex flex-col gap-1 text-sm">
-                    {projection.data.inbound.map((i) => (
-                      <li key={i.ref}>
-                        {i.ref} · {qty(i.qty)}개 · {i.eta ?? "입고일 미확인"} <span className="text-muted-foreground">({i.basis})</span>
+                  <TextList>
+                    {projection.data.inbound.map((inbound) => (
+                      <li key={inbound.ref}>
+                        {inbound.ref} · {formatQuantity(inbound.qty)}개 · {inbound.eta ?? "입고일 미확인"} <span className="text-muted-foreground">({inbound.basis})</span>
                       </li>
                     ))}
-                  </ul>
-                  <WeekTable rows={projection.data.rows} />
+                  </TextList>
+                  <WeeklyProjectionTable rows={projection.data.rows} />
                 </>
               )}
             </Section>
           )}
 
           <Section
-            title="원본 발주 14건"
+            title="Corevia 생산 라인 여력"
             description={
               <>
-                sc_purchase_orders_ms <Src type="fact" /> · 입고예정일은 발주일 + 리드타임 <Src type="assumption" />
+                생산능력·가동률 strat_capacity_cv <SourceBadge type="fact" /> · 주간 여력 = 연간 능력 × (1 − 가동률) ÷ 52 <SourceBadge type="assumption" /> · 추가 발주는
+                리드타임 안의 여력까지만 낼 수 있습니다
               </>
             }
           >
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>발주</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>발주일</TableHead>
-                  <TableHead>수량</TableHead>
-                  <TableHead>입고예정(가정)</TableHead>
-                  <TableHead>금액</TableHead>
-                  <TableHead>대금 지급일</TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeaderRow columns={PRODUCTION_LINE_COLUMNS} />
               <TableBody>
-                {data.source_pos.map((p) => (
-                  <TableRow key={p.po_id}>
-                    <TableCell>{p.po_id}</TableCell>
-                    <TableCell>{p.sku_id}</TableCell>
-                    <TableCell>{p.order_date}</TableCell>
-                    <TableCell>{qty(p.qty)}</TableCell>
-                    <TableCell>{p.eta}</TableCell>
-                    <TableCell>{won(p.amount_krw)}</TableCell>
-                    <TableCell>{p.payment_due_date}</TableCell>
+                {data.production_lines.map((line) => (
+                  <TableRow key={line.line_id}>
+                    <TableCell>
+                      {line.product_id} {line.product_name}
+                    </TableCell>
+                    <TableCell>
+                      {line.plant_id} {line.line_id}
+                    </TableCell>
+                    <TableCell>{formatQuantity(line.capacity_qty)}</TableCell>
+                    <TableCell>
+                      {line.utilization_pct}% {line.utilization_pct >= 95 ? <StatusBadge tone="warn">포화</StatusBadge> : null}
+                    </TableCell>
+                    <TableCell>{formatQuantity(line.free_weekly_qty)}</TableCell>
+                    <TableCell>{line.committed_qty ? `${formatQuantity(line.committed_qty)}개` : "-"}</TableCell>
+                    <TableCell>{line.confirmed_qty === null ? "없음" : `${formatQuantity(line.confirmed_qty)}개 가능`}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Section>
+
+          <Section
+            title="원본 발주 14건"
+            description={
+              <>
+                sc_purchase_orders_ms <SourceBadge type="fact" /> · 입고예정일은 발주일 + 리드타임 <SourceBadge type="assumption" />
+              </>
+            }
+          >
+            <Table>
+              <TableHeaderRow columns={SOURCE_PURCHASE_ORDER_COLUMNS} />
+              <TableBody>
+                {data.source_pos.map((purchaseOrder) => (
+                  <TableRow key={purchaseOrder.po_id}>
+                    <TableCell>{purchaseOrder.po_id}</TableCell>
+                    <TableCell>{purchaseOrder.sku_id}</TableCell>
+                    <TableCell>{purchaseOrder.order_date}</TableCell>
+                    <TableCell>{formatQuantity(purchaseOrder.qty)}</TableCell>
+                    <TableCell>{purchaseOrder.eta}</TableCell>
+                    <TableCell>{formatWon(purchaseOrder.amount_krw)}</TableCell>
+                    <TableCell>{purchaseOrder.payment_due_date}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -142,16 +164,17 @@ export default function SupplyPage() {
 
           <Section title={`시스템에서 승인된 추가 발주 ${data.system_pos.length}건`} description="검토 건 승인으로 생긴 발주. 실제로 보내지 않는 모의 발주입니다.">
             {data.system_pos.length === 0 ? (
-              <Empty>아직 없습니다.</Empty>
+              <MutedText>아직 없습니다.</MutedText>
             ) : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {data.system_pos.map((p) => (
-                  <li key={p.id}>
-                    PO-{p.id} · {p.payload.sku_id} · {qty(p.payload.qty)}개 · {won(p.payload.amount_krw)} · 입고예정 {p.payload.eta} · 지급 {p.payload.payment_due_date} ·{" "}
-                    {PO_STATUS[p.status] ?? p.status} · 검토 건 #{p.payload.case_id}
+              <TextList>
+                {data.system_pos.map((purchaseOrder) => (
+                  <li key={purchaseOrder.id}>
+                    PO-{purchaseOrder.id} · {purchaseOrder.payload.sku_id} · {formatQuantity(purchaseOrder.payload.qty)}개 · {formatWon(purchaseOrder.payload.amount_krw)} · 입고예정{" "}
+                    {purchaseOrder.payload.eta} · 지급 {purchaseOrder.payload.payment_due_date} · {PURCHASE_ORDER_STATUS_LABEL[purchaseOrder.status] ?? purchaseOrder.status} ·
+                    검토 건 #{purchaseOrder.payload.case_id}
                   </li>
                 ))}
-              </ul>
+              </TextList>
             )}
           </Section>
         </>
