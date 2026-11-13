@@ -13,6 +13,28 @@ export const CASE_STATUS_LABEL: Record<string, string> = {
   done: "완료",
 };
 
+/** 검토 건 상태별 배지 색. 주의는 노랑, 거절은 빨강, 승인 이후는 초록, 끝난 건은 흐리게. */
+export const CASE_STATUS_TONE: Record<string, "default" | "warn" | "muted" | "success" | "danger"> = {
+  received: "default",
+  info_needed: "warn",
+  checked: "default",
+  judged: "default",
+  pending_approval: "default",
+  rejected: "danger",
+  conditional: "warn",
+  executing: "success",
+  recheck_needed: "warn",
+  done: "muted",
+};
+
+export const APPROVAL_STATUS_TONE: Record<string, "default" | "warn" | "muted" | "success" | "danger"> = {
+  pending: "default",
+  approved: "success",
+  rejected: "danger",
+  conditional: "warn",
+  withdrawn: "muted",
+};
+
 /** 주의가 필요한 검토 건 상태 */
 export const CASE_WARNING_STATUSES = ["recheck_needed", "rejected", "info_needed"];
 

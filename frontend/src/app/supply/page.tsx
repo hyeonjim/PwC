@@ -18,7 +18,7 @@ import { formatQuantity, formatWon } from "@/lib/format";
 import { PURCHASE_ORDER_STATUS_LABEL } from "@/lib/labels";
 import type { Projection, Supply } from "@/types/supply";
 
-const SKU_COLUMNS = ["SKU", "분류", "현재고", "주간 수요(4주 평균)", "커버(주)", "이동중", "리드타임", "품절 예상 주", "약속된 캠페인", ""];
+const SKU_COLUMNS = ["SKU", "분류", "현재고", "주간 수요(4주 평균)", "커버(주)", "", "이동중", "리드타임", "품절 예상 주", "약속된 캠페인", ""];
 const PRODUCTION_LINE_COLUMNS = ["Corevia 제품군", "공장·라인", "연간 생산능력", "가동률", "주간 여력(추정)", "시스템 추가 발주 사용", "Corevia 회신"];
 const SOURCE_PURCHASE_ORDER_COLUMNS = ["발주", "SKU", "발주일", "수량", "입고예정(가정)", "금액", "대금 지급일"];
 
@@ -45,7 +45,7 @@ export default function SupplyPage() {
             }
           >
             <Table>
-              <TableHeaderRow columns={SKU_COLUMNS} />
+              <TableHeaderRow columns={SKU_COLUMNS} numericColumns={[2, 3, 4]} />
               <TableBody>
                 {data.skus.map((sku) => (
                   <TableRow key={sku.sku_id}>
@@ -53,10 +53,10 @@ export default function SupplyPage() {
                       {sku.sku_id} {sku.sku_name}
                     </TableCell>
                     <TableCell>{sku.category}</TableCell>
-                    <TableCell>{formatQuantity(sku.on_hand_qty)}</TableCell>
-                    <TableCell>{formatQuantity(sku.avg_weekly_demand_4w)}</TableCell>
+                    <TableCell className="table-number">{formatQuantity(sku.on_hand_qty)}</TableCell>
+                    <TableCell className="table-number">{formatQuantity(sku.avg_weekly_demand_4w)}</TableCell>
+                    <TableCell className="table-number">{sku.cover_weeks}</TableCell>
                     <TableCell>
-                      {sku.cover_weeks}{" "}
                       {sku.below_safety_min ? <StatusBadge tone="warn">미달</StatusBadge> : sku.above_safety_max ? <StatusBadge tone="muted">여유</StatusBadge> : null}
                     </TableCell>
                     <TableCell>
@@ -78,7 +78,7 @@ export default function SupplyPage() {
                 ))}
               </TableBody>
             </Table>
-            <p className="text-base text-muted-foreground">
+            <p className="text-muted-foreground">
               커버는 원본 정의대로 현재고만으로 계산합니다(이동중 미포함). 품절 예상 주는 입고일을 아는 물량만 넣은 16주 전망이며, 기준일 이후의 정기 발주는 원본에 없어
               넣지 않았습니다 <SourceBadge type="assumption" />
             </p>
@@ -113,7 +113,7 @@ export default function SupplyPage() {
             }
           >
             <Table>
-              <TableHeaderRow columns={PRODUCTION_LINE_COLUMNS} />
+              <TableHeaderRow columns={PRODUCTION_LINE_COLUMNS} numericColumns={[2, 4]} />
               <TableBody>
                 {data.production_lines.map((line) => (
                   <TableRow key={line.line_id}>
@@ -123,11 +123,11 @@ export default function SupplyPage() {
                     <TableCell>
                       {line.plant_id} {line.line_id}
                     </TableCell>
-                    <TableCell>{formatQuantity(line.capacity_qty)}</TableCell>
+                    <TableCell className="table-number">{formatQuantity(line.capacity_qty)}</TableCell>
                     <TableCell>
                       {line.utilization_pct}% {line.utilization_pct >= 95 ? <StatusBadge tone="warn">포화</StatusBadge> : null}
                     </TableCell>
-                    <TableCell>{formatQuantity(line.free_weekly_qty)}</TableCell>
+                    <TableCell className="table-number">{formatQuantity(line.free_weekly_qty)}</TableCell>
                     <TableCell>{line.committed_qty ? `${formatQuantity(line.committed_qty)}개` : "-"}</TableCell>
                     <TableCell>{line.confirmed_qty === null ? "없음" : `${formatQuantity(line.confirmed_qty)}개 가능`}</TableCell>
                   </TableRow>
@@ -145,16 +145,16 @@ export default function SupplyPage() {
             }
           >
             <Table>
-              <TableHeaderRow columns={SOURCE_PURCHASE_ORDER_COLUMNS} />
+              <TableHeaderRow columns={SOURCE_PURCHASE_ORDER_COLUMNS} numericColumns={[3, 5]} />
               <TableBody>
                 {data.source_pos.map((purchaseOrder) => (
                   <TableRow key={purchaseOrder.po_id}>
                     <TableCell>{purchaseOrder.po_id}</TableCell>
                     <TableCell>{purchaseOrder.sku_id}</TableCell>
                     <TableCell>{purchaseOrder.order_date}</TableCell>
-                    <TableCell>{formatQuantity(purchaseOrder.qty)}</TableCell>
+                    <TableCell className="table-number">{formatQuantity(purchaseOrder.qty)}</TableCell>
                     <TableCell>{purchaseOrder.eta}</TableCell>
-                    <TableCell>{formatWon(purchaseOrder.amount_krw)}</TableCell>
+                    <TableCell className="table-number">{formatWon(purchaseOrder.amount_krw)}</TableCell>
                     <TableCell>{purchaseOrder.payment_due_date}</TableCell>
                   </TableRow>
                 ))}

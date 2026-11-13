@@ -19,8 +19,8 @@ export function WorkItemList({ items, onDone, showCase = false }: { items: WorkT
   return (
     <div className="flex flex-col gap-2">
       {items.map((work) => (
-        <div key={work.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2 text-base">
-          <StatusBadge tone={work.status === "done" ? "muted" : "default"}>{WORK_STATUS_LABEL[work.status] ?? work.status}</StatusBadge>
+        <div key={work.id} className="work-row">
+          <StatusBadge tone={work.status === "done" ? "muted" : work.status === "in_progress" ? "success" : "default"}>{WORK_STATUS_LABEL[work.status] ?? work.status}</StatusBadge>
           <span className="font-medium">[{work.payload.dept}]</span>
           <span className="flex-1">{work.title}</span>
           {showCase && <TextLink href={`/cases/detail/?id=${work.payload.case_id}`}>#{work.payload.case_id}</TextLink>}
@@ -30,7 +30,7 @@ export function WorkItemList({ items, onDone, showCase = false }: { items: WorkT
             </Button>
           )}
           {work.status !== "done" && (
-            <Button size="sm" disabled={busy} onClick={() => changeStatus(work.id, "done")}>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => changeStatus(work.id, "done")}>
               완료 처리
             </Button>
           )}

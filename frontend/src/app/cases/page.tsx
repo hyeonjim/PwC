@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import { NewCaseForm } from "@/app/cases/_components/new-case-form";
-import { borderedBoxClassName } from "@/components/common/bordered-box";
 import { LoadingMessage } from "@/components/common/loading-message";
 import { MutedText } from "@/components/common/muted-text";
 import { PageTitle } from "@/components/common/page-title";
@@ -11,8 +10,7 @@ import { Section } from "@/components/common/section";
 import { StatusBadge } from "@/components/common/status-badge";
 import { useApi } from "@/hooks/use-api";
 import { formatQuantity } from "@/lib/format";
-import { CASE_STATUS_LABEL, CASE_WARNING_STATUSES } from "@/lib/labels";
-import { cn } from "@/lib/utils";
+import { CASE_STATUS_LABEL, CASE_STATUS_TONE } from "@/lib/labels";
 import type { CaseTask, Plan } from "@/types/case";
 import type { Supply } from "@/types/supply";
 
@@ -31,10 +29,11 @@ export default function CasesPage() {
       <Section title="검토 건 목록">
         {!cases.data && <LoadingMessage error={cases.error} />}
         {cases.data?.length === 0 && <MutedText>아직 접수된 검토 건이 없습니다. 아래에서 접수하세요.</MutedText>}
+        <div>
         {cases.data?.map((caseTask) => (
-          <Link key={caseTask.id} href={`/cases/detail/?id=${caseTask.id}`} className={cn(borderedBoxClassName, "flex flex-wrap items-center gap-2 hover:bg-muted")}>
-            <span className="text-muted-foreground">#{caseTask.id}</span>
-            <StatusBadge tone={CASE_WARNING_STATUSES.includes(caseTask.status) ? "warn" : caseTask.status === "done" ? "muted" : "default"}>
+          <Link key={caseTask.id} href={`/cases/detail/?id=${caseTask.id}`} className="case-row">
+            <span className="case-row-id">#{caseTask.id}</span>
+            <StatusBadge tone={CASE_STATUS_TONE[caseTask.status]}>
               {CASE_STATUS_LABEL[caseTask.status] ?? caseTask.status}
             </StatusBadge>
             <span className="font-medium">{caseTask.title}</span>
@@ -44,6 +43,7 @@ export default function CasesPage() {
             </span>
           </Link>
         ))}
+        </div>
       </Section>
 
       {plans.data && supply.data ? <NewCaseForm plans={plans.data} supply={supply.data} /> : <LoadingMessage error={plans.error ?? supply.error} />}

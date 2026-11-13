@@ -7,10 +7,10 @@ import type { EventRow } from "@/types/task";
 export function EventList({ events, showCase = false }: { events: EventRow[]; showCase?: boolean }) {
   if (events.length === 0) return <MutedText>아직 이력이 없습니다.</MutedText>;
   return (
-    <ol className="flex flex-col gap-1.5 text-base">
+    <ol className="event-list">
       {events.map((event) => (
-        <li key={event.id} className="flex flex-wrap gap-x-2">
-          <span className="text-muted-foreground">{formatDateTime(event.created_at)}</span>
+        <li key={event.id} className="event-row">
+          <span className="event-time">{formatDateTime(event.created_at)}</span>
           <span className="font-medium">
             {event.actor} · {event.action}
           </span>

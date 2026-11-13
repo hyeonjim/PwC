@@ -1,9 +1,8 @@
 "use client";
 
-// ④ 대안 한 장: 내용, Corevia 생산 여력(추가 발주), 승인권자, 영향 부서, 상신 버튼.
+// 대안 한 장: 내용, Corevia 생산 여력(추가 발주), 승인권자, 영향 부서, 상신 버튼.
 import { useState } from "react";
 
-import { BorderedBox } from "@/components/common/bordered-box";
 import { ErrorText } from "@/components/common/error-text";
 import { FormField, TextInput } from "@/components/common/form-field";
 import { SourceBadge } from "@/components/common/source-badge";
@@ -38,17 +37,17 @@ export function OptionCard({ option, caseId, canRequest, recommended, selected, 
         : null;
 
   return (
-    <BorderedBox className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{option.title}</span>
+    <div className="option-card" data-recommended={recommended}>
+      <div className="option-card-header">
+        <h3 className="option-card-title">{option.title}</h3>
         {!option.applicable ? (
           <StatusBadge tone="muted">해당 없음</StatusBadge>
         ) : option.feasible ? (
-          <StatusBadge>가능</StatusBadge>
+          <StatusBadge tone="success">가능</StatusBadge>
         ) : (
           <StatusBadge tone="warn">한계 있음</StatusBadge>
         )}
-        {recommended && <StatusBadge>AI 권고</StatusBadge>}
+        {recommended && <StatusBadge tone="accent">AI 권고</StatusBadge>}
         {selected && <StatusBadge tone="muted">상신한 대안</StatusBadge>}
       </div>
       <p>{option.summary}</p>
@@ -70,14 +69,14 @@ export function OptionCard({ option, caseId, canRequest, recommended, selected, 
             </TextList>
           )}
           {capacity && (
-            <div className="flex flex-col gap-1">
-              <p className="font-medium">
+            <div className="flex flex-col gap-2">
+              <p className="sub-title">
                 Corevia 생산 여력 <SourceBadge type="calculation" />
               </p>
               <TextList>
                 {capacity.lines.map((line) => (
                   <li key={line.product_id}>
-                    {line.ok ? <StatusBadge>여력 안</StatusBadge> : <StatusBadge tone="warn">여력 초과</StatusBadge>} {line.product_name} 라인({line.plant_id} {line.line_id}) ·{" "}
+                    {line.ok ? <StatusBadge tone="success">여력 안</StatusBadge> : <StatusBadge tone="warn">여력 초과</StatusBadge>} {line.product_name} 라인({line.plant_id} {line.line_id}) ·{" "}
                     {line.window_weeks}주 여력 {formatQuantity(line.remaining_qty)}개 / 필요 {formatQuantity(line.required_qty)}개{" "}
                     <span className="text-muted-foreground">
                       ({line.basis === "corevia_reply" ? "Corevia 회신" : `가동률 ${line.utilization_pct}% 기준 추정`}
@@ -111,11 +110,11 @@ export function OptionCard({ option, caseId, canRequest, recommended, selected, 
             </TextList>
           )}
           {canRequest && (
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="form-row">
               <FormField label="상신 메모">
                 <TextInput value={note} onChange={(event) => setNote(event.target.value)} placeholder="선택 이유" />
               </FormField>
-              <Button disabled={busy || blockedReason !== null} variant={option.feasible ? "default" : "outline"} onClick={requestApproval}>
+              <Button disabled={busy || blockedReason !== null} variant={recommended ? "default" : "outline"} onClick={requestApproval}>
                 이 대안으로 {option.route.approver}에 상신
               </Button>
               {blockedReason && <p className="text-muted-foreground">{blockedReason}</p>}
@@ -124,6 +123,6 @@ export function OptionCard({ option, caseId, canRequest, recommended, selected, 
           <ErrorText error={error} />
         </>
       )}
-    </BorderedBox>
+    </div>
   );
 }

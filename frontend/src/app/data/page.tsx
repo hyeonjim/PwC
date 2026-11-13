@@ -64,7 +64,7 @@ export default function DataPage() {
         <TextList className="gap-1.5">
           {SOURCE_FILES.map(([file, usage, type]) => (
             <li key={file}>
-              <SourceBadge type={type} /> <span className="font-medium">{file}</span> — {usage}
+              <SourceBadge type={type} /> <span className="data-file-name">{file}</span> — {usage}
             </li>
           ))}
         </TextList>
@@ -77,7 +77,7 @@ export default function DataPage() {
             <p className="font-medium">
               {assumption.id} · {assumption.statement}
             </p>
-            <p className="mt-1 text-muted-foreground">이유: {assumption.reason}</p>
+            <p className="mt-2 text-muted-foreground">이유: {assumption.reason}</p>
             <p className="text-muted-foreground">원본 연결: {assumption.source_ref}</p>
             <p className="text-muted-foreground">쓰이는 곳: {assumption.used_in}</p>
           </BorderedBox>

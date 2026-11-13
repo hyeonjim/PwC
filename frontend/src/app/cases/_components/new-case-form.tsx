@@ -73,7 +73,7 @@ export function NewCaseForm({ plans, supply }: { plans: Plan[]; supply: Supply }
         ]}
       />
 
-      <div className="flex flex-wrap gap-3">
+      <div className="form-row">
         <FormField label="캠페인 시작일">
           <TextInput type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
         </FormField>
@@ -85,11 +85,11 @@ export function NewCaseForm({ plans, supply }: { plans: Plan[]; supply: Supply }
         </FormField>
       </div>
 
-      <div className="flex flex-col gap-1 text-base">
+      <div className="flex flex-col gap-3">
         <p className="text-muted-foreground">
           대상 SKU 와 수요 증가율(평시 주간 판매 대비 %). 비워 두면 대상에서 빠집니다. 기안의 상품군과 같은 분류의 SKU 를 먼저 채워 뒀습니다 <SourceBadge type="assumption" />
         </p>
-        <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        <div className="case-form-sku-grid">
           {supply.skus.map((sku) => (
             <label key={sku.sku_id} className="flex items-center gap-2">
               <TextInput
@@ -118,7 +118,7 @@ export function NewCaseForm({ plans, supply }: { plans: Plan[]; supply: Supply }
         <Button disabled={busy || skuLines.length === 0} onClick={submit}>
           접수하고 확인 시작
         </Button>
-        {skuLines.length === 0 && <span className="text-base text-muted-foreground">대상 SKU 를 하나 이상 넣어 주세요.</span>}
+        {skuLines.length === 0 && <span className="text-muted-foreground">대상 SKU 를 하나 이상 넣어 주세요.</span>}
       </div>
       <ErrorText error={error} />
     </Section>

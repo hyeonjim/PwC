@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
 import { SourceBadge } from "@/components/common/source-badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-/** 제목·설명이 있는 카드 묶음. sourceType 을 주면 설명 끝에 출처 꼬리표를 붙인다. */
+/** 제목·설명 아래에 카드 하나를 두는 묶음. sourceType 을 주면 설명 끝에 출처 꼬리표를 붙인다. */
 export function Section({
   title,
   description,
@@ -17,16 +16,16 @@ export function Section({
 }) {
   const hasDescription = description != null || sourceType != null;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
+    <section className="section">
+      <div>
+        <h2 className="section-title">{title}</h2>
         {hasDescription && (
-          <CardDescription>
+          <p className="section-description">
             {description} {sourceType && <SourceBadge type={sourceType} />}
-          </CardDescription>
+          </p>
         )}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">{children}</CardContent>
-    </Card>
+      </div>
+      <div className="surface-card">{children}</div>
+    </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-// ③ AI 판단: 계산 결과와 규정을 읽고 어떤 대안으로 올릴지 초안을 쓴다.
+// AI 판단: 계산 결과와 규정을 읽고 어떤 대안으로 올릴지 초안을 쓴다.
 import { ErrorText } from "@/components/common/error-text";
 import { FactList } from "@/components/common/fact-list";
 import { MutedText } from "@/components/common/muted-text";
@@ -29,7 +29,7 @@ export function JudgmentSection({ judgment, caseId, canJudge, onDone, options }:
   const buttonLabel = busy ? "판단 받는 중… (1~2분 걸릴 수 있습니다)" : judgment ? "AI 판단 다시 받기" : "AI 판단 받기";
 
   return (
-    <Section title="③ AI 판단" description="계산 결과와 규정을 읽고 어떤 대안으로 올릴지 초안을 씁니다. 결정은 사람이 합니다.">
+    <Section title="AI 판단" description="계산 결과와 규정을 읽고 어떤 대안으로 올릴지 초안을 씁니다. 결정은 사람이 합니다.">
       {!judgment && <MutedText>아직 판단을 받지 않았습니다.</MutedText>}
       {judgment && recommendation && (
         <>
@@ -42,7 +42,7 @@ export function JudgmentSection({ judgment, caseId, canJudge, onDone, options }:
               ["확신 정도", recommendation.confidence],
             ]}
           />
-          <p className="text-base">{recommendation.summary}</p>
+          <p>{recommendation.summary}</p>
           {judgment.error && <MutedText>AI 를 쓰지 못한 이유: {judgment.error}</MutedText>}
 
           <SubSection title="근거">
@@ -67,7 +67,7 @@ export function JudgmentSection({ judgment, caseId, canJudge, onDone, options }:
           )}
           {recommendation.missing_info.length > 0 && (
             <SubSection title="확인되지 않은 정보">
-              <ul className="list-disc pl-5">
+              <ul className="text-list list-disc pl-5">
                 {recommendation.missing_info.map((info, index) => (
                   <li key={index}>{info}</li>
                 ))}
@@ -78,7 +78,7 @@ export function JudgmentSection({ judgment, caseId, canJudge, onDone, options }:
       )}
       {canJudge && (
         <div className="flex items-center gap-2">
-          <Button disabled={busy} onClick={() => run(() => postApi(`/cases/${caseId}/judge`))}>
+          <Button disabled={busy} variant={judgment ? "outline" : "default"} onClick={() => run(() => postApi(`/cases/${caseId}/judge`))}>
             {buttonLabel}
           </Button>
         </div>

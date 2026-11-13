@@ -12,7 +12,7 @@ import { TextLink } from "@/components/common/text-link";
 import { Button } from "@/components/ui/button";
 import { useAction } from "@/hooks/use-action";
 import { postApi } from "@/lib/api-client";
-import { APPROVAL_STATUS_LABEL } from "@/lib/labels";
+import { APPROVAL_STATUS_LABEL, APPROVAL_STATUS_TONE } from "@/lib/labels";
 import type { ApprovalTask } from "@/types/case";
 
 export function ApprovalCard({ approval, onDone, showCase = false }: { approval: ApprovalTask; onDone: () => void; showCase?: boolean }) {
@@ -22,9 +22,9 @@ export function ApprovalCard({ approval, onDone, showCase = false }: { approval:
   const payload = approval.payload;
 
   return (
-    <BorderedBox className="flex flex-col gap-2">
+    <BorderedBox className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge tone={approval.status === "pending" ? "default" : "muted"}>{APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}</StatusBadge>
+        <StatusBadge tone={APPROVAL_STATUS_TONE[approval.status]}>{APPROVAL_STATUS_LABEL[approval.status] ?? approval.status}</StatusBadge>
         <span className="font-medium">
           승인권자: {payload.approver} · 대안: {payload.option.title}
         </span>
@@ -40,7 +40,7 @@ export function ApprovalCard({ approval, onDone, showCase = false }: { approval:
           <FormField label="회신 메모 (거절 사유·조건)">
             <TextInput value={note} onChange={(event) => setNote(event.target.value)} placeholder="예: 하회 구간 신규 약정 불가" />
           </FormField>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="approval-actions">
             <Button disabled={busy} onClick={() => reply("approve")}>
               승인
             </Button>

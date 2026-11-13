@@ -1,6 +1,6 @@
 "use client";
 
-// ② 확인 결과: 재고·입고 일정·현금을 캠페인 수요와 맞춰 본 결과.
+// 확인 결과: 재고·입고 일정·현금을 캠페인 수요와 맞춰 본 결과.
 import { ErrorText } from "@/components/common/error-text";
 import { Section } from "@/components/common/section";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -24,28 +24,28 @@ export function CheckResultSection({ check, caseId, onDone }: { check: Check; ca
     : "없음";
 
   return (
-    <Section title="② 확인 결과" description={`재고·입고 일정·현금을 캠페인 수요와 맞춰 본 결과 (${check.horizon_weeks}주 전망)`} sourceType="calculation">
-      <p className="text-base font-medium">
+    <Section title="확인 결과" description={`재고·입고 일정·현금을 캠페인 수요와 맞춰 본 결과 (${check.horizon_weeks}주 전망)`} sourceType="calculation">
+      <p className="font-medium">
         {check.conclusion === "ok" ? "캠페인 기간에 품절이 예상되지 않습니다." : <StatusBadge tone="warn">캠페인 기간에 품절이 예상됩니다</StatusBadge>}
       </p>
 
       <Table>
-        <TableHeaderRow columns={SKU_COLUMNS} />
+        <TableHeaderRow columns={SKU_COLUMNS} numericColumns={[1, 2, 3, 7]} />
         <TableBody>
           {check.skus.map((sku) => (
             <TableRow key={sku.sku_id}>
               <TableCell>
                 {sku.sku_id} {sku.sku_name}
               </TableCell>
-              <TableCell>{formatQuantity(sku.on_hand_qty)}</TableCell>
-              <TableCell>{formatQuantity(sku.avg_weekly_demand_4w)}</TableCell>
-              <TableCell>+{sku.uplift_pct}%</TableCell>
+              <TableCell className="table-number">{formatQuantity(sku.on_hand_qty)}</TableCell>
+              <TableCell className="table-number">{formatQuantity(sku.avg_weekly_demand_4w)}</TableCell>
+              <TableCell className="table-number">+{sku.uplift_pct}%</TableCell>
               <TableCell>
                 {formatQuantity(sku.moq)} / {sku.lead_time_weeks}주
               </TableCell>
               <TableCell>{sku.baseline_first_stockout_week ?? "없음"}</TableCell>
               <TableCell>{sku.campaign_first_stockout_week ?? "없음"}</TableCell>
-              <TableCell>{sku.shortage_in_campaign_qty ? `${formatQuantity(sku.shortage_in_campaign_qty)}개` : "없음"}</TableCell>
+              <TableCell className="table-number">{sku.shortage_in_campaign_qty ? `${formatQuantity(sku.shortage_in_campaign_qty)}개` : "없음"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -83,8 +83,8 @@ export function CheckResultSection({ check, caseId, onDone }: { check: Check; ca
       </SubSection>
 
       {check.skus.map((sku) => (
-        <details key={sku.sku_id} className="text-base">
-          <summary className="cursor-pointer font-medium">{sku.sku_id} 주간 전망 펼치기</summary>
+        <details key={sku.sku_id} className="projection-details">
+          <summary>{sku.sku_id} 주간 전망 펼치기</summary>
           <WeeklyProjectionTable rows={sku.rows} />
         </details>
       ))}

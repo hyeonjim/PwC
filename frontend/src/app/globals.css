@@ -2,26 +2,47 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* ==========================================================================
+   목차
+   1. 폰트
+   2. 디자인 토큰 (색·그림자·모서리)
+   3. 기본 요소
+   4. 공통 — 페이지 제목, 섹션, 카드, KPI, 배지, 표, 입력, 목록, 차트
+   5. 화면별 — 헤더 / 오늘 할 일 / 캠페인 검토 / 검토 상세 / SKU 수요·공급 / 현금·약정 / 승인·작업함 / 원본·가정
+   ========================================================================== */
 
+/* 1. 폰트 --------------------------------------------------------------- */
+/* Spoqa Han Sans Neo. 굵기는 Regular(400)·Medium(500)·Bold(700) 세 가지만 쓴다. */
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SpoqaHanSansNeo-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SpoqaHanSansNeo-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/SpoqaHanSansNeo-Bold.woff2") format("woff2");
+}
+
+/* 2. 디자인 토큰 --------------------------------------------------------- */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-heading: var(--font-sans);
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-sans:
+    "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", system-ui,
+    sans-serif;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -38,92 +59,417 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* 무채색: 화면의 대부분 */
+  --background: #f7f7f5;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --secondary: #f2f2f0;
+  --secondary-foreground: #111111;
+  --muted: #f2f2f0;
+  --muted-foreground: #6b6b6b;
+  --accent: #f2f2f0;
+  --accent-foreground: #111111;
+  --disabled-foreground: #9a9a9a;
+  --border: #ededed;
+  --input: #ededed;
+  --row-hover: #fafaf8;
+
+  /* 포인트: 주요 버튼·활성 표시·선택·포커스에만 */
+  --primary: #ff6100;
+  --primary-hover: #e05500;
+  --primary-soft: #fff0e6;
+  --primary-soft-foreground: #b84600;
+  --primary-foreground: #ffffff;
+  --ring: #ff6100;
+
+  /* 상태: 배지에만 작게 */
+  --warning: #f5b800;
+  --warning-soft: #fff8db;
+  --warning-foreground: #7a5a00;
+  --success-soft: #edf4ef;
+  --success-foreground: #3b6b4c;
+  --destructive: #a2463f;
+  --destructive-soft: #fbefee;
+
+  /* 차트: 회색이 기본, 강조 시리즈 하나만 주황 */
+  --chart-emphasis: #ff6100;
+  --chart-neutral: #bdbdba;
+  --chart-grid: #ededed;
+
+  /* 그림자는 두 단계만 */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover:
+    0 2px 4px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+  --radius: 8px;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
+/* 3. 기본 요소 ----------------------------------------------------------- */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+}
+
+/* 4. 공통 ---------------------------------------------------------------- */
+@layer components {
+  /* 페이지 본문 틀 */
+  .page-main {
+    @apply mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-10 px-4 py-10 md:px-8;
+  }
+
+  /* 페이지 제목 */
+  .page-header {
+    @apply flex flex-wrap items-end justify-between gap-4;
+  }
+  .page-title {
+    @apply text-[28px] leading-[1.3] font-medium tracking-[-0.02em];
+  }
+  .page-description {
+    @apply mt-1.5 max-w-3xl text-muted-foreground;
+  }
+
+  /* 섹션: 제목은 카드 밖, 내용은 카드 안 */
+  .section {
+    @apply flex min-w-0 flex-col gap-4;
+  }
+  .section-title {
+    @apply text-xl font-medium tracking-[-0.01em];
+  }
+  .section-description {
+    @apply mt-1 text-muted-foreground;
+  }
+  .section-grid {
+    @apply grid gap-x-6 gap-y-10 md:grid-cols-2;
+  }
+
+  /* 카드: 외곽선 없이 그림자로만 구분 */
+  .surface-card {
+    @apply flex min-w-0 flex-col gap-4 rounded-xl bg-card p-6;
+    box-shadow: var(--shadow-card);
+  }
+  .surface-card-clickable {
+    @apply transition-shadow;
+  }
+  .surface-card-clickable:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .card-title {
+    @apply text-lg font-normal;
+  }
+  .sub-title {
+    @apply font-medium;
+  }
+
+  /* 카드 안의 한 줄·한 묶음 (승인 한 건, 작업 한 건, 가정 한 건) */
+  .inner-box {
+    @apply rounded-lg bg-background p-4;
+  }
+
+  /* KPI 요약: 라벨 → 숫자 → 보충 */
+  .kpi-grid {
+    @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-4;
+  }
+  .kpi-card {
+    @apply flex flex-col gap-1.5 rounded-xl bg-card px-6 py-5;
+    box-shadow: var(--shadow-card);
+  }
+  .kpi-label {
+    @apply text-sm text-muted-foreground;
+  }
+  .kpi-value {
+    @apply text-[30px] leading-tight font-medium tracking-[-0.02em] tabular-nums;
+  }
+  .kpi-unit {
+    @apply ml-1 text-base font-normal tracking-normal text-muted-foreground;
+  }
+  .kpi-note {
+    @apply flex flex-wrap items-center gap-2 text-sm text-muted-foreground;
+  }
+
+  /* 배지: 옅은 배경 + 같은 계열의 진한 글자 */
+  .badge {
+    @apply inline-flex h-6 w-fit shrink-0 items-center rounded-sm px-2 align-middle text-sm font-medium whitespace-nowrap;
+  }
+  .badge-neutral {
+    background: var(--muted);
+    color: #4a4a4a;
+  }
+  .badge-muted {
+    background: var(--muted);
+    color: var(--muted-foreground);
+  }
+  .badge-warning {
+    background: var(--warning-soft);
+    color: var(--warning-foreground);
+  }
+  .badge-success {
+    background: var(--success-soft);
+    color: var(--success-foreground);
+  }
+  .badge-danger {
+    background: var(--destructive-soft);
+    color: var(--destructive);
+  }
+  .badge-accent {
+    background: var(--primary-soft);
+    color: var(--primary-soft-foreground);
+  }
+  /* 출처 꼬리표(원본·가정·계산…): 상태 배지와 구분되게 배경 없이 */
+  .badge-source {
+    @apply font-normal text-muted-foreground;
+    box-shadow: inset 0 0 0 1px #e2e2e0;
+  }
+
+  /* 표: 세로선 없이 행 구분선만 */
+  .data-table {
+    @apply w-full caption-bottom;
+  }
+  .data-table th {
+    @apply h-10 px-4 text-left align-middle text-sm font-normal whitespace-nowrap text-muted-foreground;
+  }
+  .data-table td {
+    @apply h-12 px-4 py-2 align-middle whitespace-nowrap;
+  }
+  .data-table tr {
+    @apply border-b border-border transition-colors;
+  }
+  .data-table tbody tr:last-child {
+    @apply border-b-0;
+  }
+  .data-table tbody tr:hover {
+    background: var(--row-hover);
+  }
+  .data-table tbody tr[data-state="selected"] {
+    background: var(--primary-soft);
+  }
+  /* 금액·수량: 오른쪽 정렬 + 자릿수 맞춤 */
+  .data-table .table-number {
+    @apply text-right tabular-nums;
+  }
+
+  /* 입력 폼 */
+  .form-field {
+    @apply flex flex-col gap-1.5;
+  }
+  .form-label {
+    @apply text-sm font-medium;
+  }
+  .form-input {
+    @apply h-10 rounded-lg bg-background px-3 text-base outline-none;
+  }
+  .form-input:focus-visible {
+    @apply bg-card;
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+  .form-row {
+    @apply flex flex-wrap items-end gap-3;
+  }
+
+  /* 이름표: 값 목록 */
+  .fact-list {
+    @apply grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2;
+  }
+  .fact-list dt {
+    @apply text-muted-foreground;
+  }
+
+  /* 글자 목록·링크·상태 문구 */
+  .text-list {
+    @apply flex flex-col gap-2;
+  }
+  .text-link {
+    @apply underline decoration-[#c9c9c6] underline-offset-4 hover:decoration-foreground;
+  }
+  .caption {
+    @apply text-sm text-muted-foreground;
+  }
+  .state-message {
+    @apply flex items-center gap-2 text-muted-foreground;
+  }
+  .state-message-error {
+    color: var(--destructive);
+  }
+
+  /* 차트: 나타날 때 왼쪽에서 오른쪽으로 그려진다 */
+  .chart {
+    @apply flex flex-col gap-3;
+  }
+  .chart-legend {
+    @apply flex flex-wrap gap-4 text-sm text-muted-foreground;
+  }
+  .chart-legend-item {
+    @apply flex items-center gap-1.5;
+  }
+  .chart-legend-line {
+    @apply inline-block h-0.5 w-3.5;
+  }
+  .chart-body {
+    @apply flex gap-3;
+  }
+  .chart-axis-y {
+    @apply relative w-14 shrink-0 text-right text-sm text-muted-foreground tabular-nums;
+  }
+  .chart-axis-y span {
+    @apply absolute right-0 -translate-y-1/2;
+  }
+  .chart-plot {
+    @apply relative min-w-0 flex-1;
+  }
+  .chart-grid-line {
+    @apply absolute inset-x-0 h-px;
+    background: var(--chart-grid);
+  }
+  .chart-threshold {
+    @apply absolute inset-x-0 border-t border-dashed border-muted-foreground;
+  }
+  .chart-threshold-label {
+    @apply absolute right-0 bg-card px-1 text-sm text-muted-foreground;
+  }
+  .chart-lines {
+    @apply absolute inset-0 h-full w-full overflow-visible;
+    animation: chart-reveal 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .chart-axis-x {
+    @apply flex justify-between pl-[68px] text-sm text-muted-foreground tabular-nums;
+  }
+}
+
+@keyframes chart-reveal {
+  from {
+    clip-path: inset(-8px 100% -8px 0);
+  }
+  to {
+    clip-path: inset(-8px -8px -8px 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-lines {
+    animation: none;
+  }
+}
+
+/* 5. 화면별 -------------------------------------------------------------- */
+@layer components {
+  /* 헤더 — 모든 화면 공통 (app/_components/site-header.tsx) */
+  .site-header {
+    @apply sticky top-0 z-10 bg-card;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .site-header-inner {
+    @apply mx-auto flex h-16 w-full max-w-[1280px] items-center gap-10 px-4 md:px-8;
+  }
+  .site-brand {
+    @apply shrink-0 text-lg font-bold tracking-[-0.01em];
+  }
+  .site-nav {
+    @apply flex h-16 min-w-0 flex-1 gap-7 overflow-x-auto;
+  }
+  .site-nav-link {
+    @apply flex h-16 items-center border-b-2 font-medium border-transparent text-lg pt-0.5 whitespace-nowrap text-muted-foreground hover:text-foreground;
+  }
+  .site-nav-link[aria-current="page"] {
+    @apply border-primary font-bold text-foreground;
+  }
+  .site-header-meta {
+    @apply hidden shrink-0 text-muted-foreground lg:block;
+  }
+
+  /* 오늘 할 일 (app/page.tsx) */
+  .overview-status-list {
+    @apply flex flex-wrap gap-x-6 gap-y-2;
+  }
+  .overview-status-count {
+    @apply ml-1.5 font-medium tabular-nums;
+  }
+
+  /* 캠페인 검토 목록 (app/cases/page.tsx) */
+  .case-row {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-2 py-3 transition-colors last:border-b-0;
+  }
+  .case-row:hover {
+    background: var(--row-hover);
+  }
+  .case-row-id {
+    @apply w-10 text-muted-foreground tabular-nums;
+  }
+  .case-form-sku-grid {
+    @apply grid gap-x-6 gap-y-2 sm:grid-cols-2;
+  }
+
+  /* 검토 상세 (app/cases/detail) — 접수 → 확인 → 판단 → 대안 → 승인 → 후속 순서로 읽힌다 */
+  .case-status {
+    @apply flex flex-wrap items-center gap-3 rounded-xl bg-card px-6 py-4;
+    box-shadow: var(--shadow-card);
+  }
+  .option-card {
+    @apply flex flex-col gap-3 rounded-lg bg-background p-5;
+  }
+  /* AI 권고 대안만 주황 테두리(전체 둘레)로 표시 */
+  .option-card[data-recommended="true"] {
+    @apply bg-card;
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+  .option-card-header {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .option-card-title {
+    @apply text-lg font-medium;
+  }
+
+  /* SKU 수요·공급 (app/supply/page.tsx) */
+  .projection-details summary {
+    @apply cursor-pointer font-medium;
+  }
+  .projection-details[open] summary {
+    @apply mb-4;
+  }
+
+  /* 현금·약정 (app/cash/page.tsx) */
+  .cash-items {
+    @apply whitespace-normal text-muted-foreground;
+  }
+
+  /* 승인·작업함 (components/work, components/approval) */
+  .work-row {
+    @apply flex flex-wrap items-center gap-2 rounded-lg bg-background px-4 py-3;
+  }
+  .approval-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  /* 처리 이력 (components/event) */
+  .event-list {
+    @apply flex flex-col gap-2;
+  }
+  .event-row {
+    @apply flex flex-wrap gap-x-3;
+  }
+  .event-time {
+    @apply text-muted-foreground tabular-nums;
+  }
+
+  /* 원본·가정 (app/data/page.tsx) */
+  .data-file-name {
+    @apply font-medium break-all;
   }
 }

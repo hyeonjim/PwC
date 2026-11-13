@@ -33,8 +33,8 @@ export function ConditionChangeForm({ onDone, skuIds, purchaseOrderRefs, caseId,
   const submitChange = (body: Record<string, unknown>) => run(() => postApi("/changes", body));
 
   return (
-    <div className="flex flex-col gap-4 text-base">
-      <div className="flex flex-wrap items-end gap-2">
+    <div className="flex flex-col gap-5">
+      <div className="form-row">
         <FormField label="이동중 물량 입고예정일 회신 — SKU">
           <select className={inputClassName} value={transitSkuId} onChange={(event) => setTransitSkuId(event.target.value)}>
             {skuIds.map((skuId) => (
@@ -50,7 +50,7 @@ export function ConditionChangeForm({ onDone, skuIds, purchaseOrderRefs, caseId,
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="form-row">
         <FormField label="발주 입고예정일 변경(지연) 회신 — 발주">
           <select className={inputClassName} value={purchaseOrderRef} onChange={(event) => setPurchaseOrderRef(event.target.value)}>
             {purchaseOrderRefs.map((ref) => (
@@ -67,7 +67,7 @@ export function ConditionChangeForm({ onDone, skuIds, purchaseOrderRefs, caseId,
       </div>
 
       {productLines.length > 0 && (
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="form-row">
           <FormField label="Corevia 생산 여력 회신 — 라인">
             <select className={inputClassName} value={productId} onChange={(event) => setProductId(event.target.value)}>
               {productLines.map((line) => (
@@ -91,7 +91,7 @@ export function ConditionChangeForm({ onDone, skuIds, purchaseOrderRefs, caseId,
       )}
 
       {caseId !== undefined && (
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="form-row">
           <FormField label="수요 가정 정정 — SKU">
             <select className={inputClassName} value={demandSkuId} onChange={(event) => setDemandSkuId(event.target.value)}>
               {skuIds.map((skuId) => (
