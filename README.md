@@ -14,7 +14,6 @@
 <br/>
 
 ![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 ![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
@@ -192,11 +191,11 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 
 | 원칙 | 내용 |
 | --- | --- |
-| 🔢 **숫자를 지어내지 않음** | 받은 근거에 있는 숫자만 인용합니다 |
-| 🏷️ **근거 성격 구분** | 원본 기록은 `fact`, 부서 주장은 `claim`, 새로 정한 가정은 `assumption`, 시스템 계산은 `calculation` 으로 나눕니다 |
-| 🚧 **원본 제약 유지** | 리드타임·MOQ·승인 권한·차입 약정을 없다고 가정하지 않습니다 |
-| ⏸️ **정보 공백이면 보류** | 판단을 바꿀 수 있는 공백이 있으면 `missing_info` 에 적고 `hold` 로 둡니다 |
-| 🔁 **이전 결정 반영** | 거절된 대안과 승인권자가 붙인 조건을 다음 판단에 반영합니다 |
+| **숫자를 지어내지 않음** | 받은 근거에 있는 숫자만 인용합니다 |
+| **근거 성격 구분** | 원본 기록은 `fact`, 부서 주장은 `claim`, 새로 정한 가정은 `assumption`, 시스템 계산은 `calculation` 으로 나눕니다 |
+| **원본 제약 유지** | 리드타임·MOQ·승인 권한·차입 약정을 없다고 가정하지 않습니다 |
+| **정보 공백이면 보류** | 판단을 바꿀 수 있는 공백이 있으면 `missing_info` 에 적고 `hold` 로 둡니다 |
+| **이전 결정 반영** | 거절된 대안과 승인권자가 붙인 조건을 다음 판단에 반영합니다 |
 
 - 모델: `claude-opus-5-5` (`ANTHROPIC_MODEL`, `AI_EFFORT` 로 바꿀 수 있음)
 - API 키가 없으면 규칙 기반 예비 판단으로 동작합니다.
@@ -213,7 +212,6 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 ### Frontend
 
 ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-000000?style=for-the-badge&logo=shadcnui&logoColor=white)
@@ -222,7 +220,7 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 <table>
 <tr><th>Category</th><th>Stack</th></tr>
 <tr><td>Language</td><td>TypeScript 5</td></tr>
-<tr><td>Framework</td><td>Next.js 16 (App Router, 정적 내보내기), React 19</td></tr>
+<tr><td>Framework</td><td>Next.js 16</td></tr>
 <tr><td>Styling</td><td>Tailwind CSS 4, shadcn/ui</td></tr>
 <tr><td>Package Manager</td><td>pnpm</td></tr>
 </table>
