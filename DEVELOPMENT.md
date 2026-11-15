@@ -1,6 +1,6 @@
 # 개발 가이드
 
-Next.js(화면) + FastAPI(백엔드)를 컨테이너 하나로 묶어 AXHub 앱 `aurora-hyeonji` 에 배포합니다.
+Next.js(화면) + FastAPI(백엔드)를 컨테이너 하나로 묶습니다. 대회 기간에는 AXHub 앱 `aurora-hyeonji` 로 배포했습니다(지금은 연결 해제).
 
 ## 폴더
 
@@ -49,5 +49,5 @@ docker build -t aurora-local .; docker run --rm -p 8080:8080 aurora-local   # �
 ## 배포
 
 - 작업은 `dev` 브랜치에서 합니다.
-- AXHub 는 `main` 브랜치를 배포합니다. `main` 에 합쳐서 push 하면 배포가 시작됩니다.
-- 비밀값(`ANTHROPIC_API_KEY`)은 AXHub 비밀 환경변수로 등록합니다. `DATABASE_URL`·`PORT` 는 AXHub 가 넣어 줍니다.
+- 코드는 GitHub(`hyeonjim/PwC`)의 `main` 브랜치에 올립니다. 자동 배포는 없습니다.
+- 컨테이너로 띄울 때는 `ANTHROPIC_API_KEY`·`DATABASE_URL`·`PORT` 를 환경변수로 넣습니다.

@@ -64,7 +64,7 @@ Aurora 그룹(가상 화장품 그룹)의 유통 자회사 **Masil Commerce** �
 | 💻 **플랫폼** | Web |
 | 👥 **개발 인원** | 1명 (1인 프로젝트 · 기획 · 화면 · 백엔드 · AI · 배포 전담) |
 | 🏢 **대회** | AX 인재전쟁 ONLINE · 삼일PwC |
-| 🌐 **배포** | AXHub (`aurora-hyeonji`) |
+| 🌐 **배포** | AXHub (`aurora-hyeonji`, 대회 기간) |
 
 <br/>
 
@@ -259,7 +259,7 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 <tr><th>Category</th><th>Stack</th></tr>
 <tr><td>AI</td><td>Anthropic SDK 2.8, claude-opus-5-5</td></tr>
 <tr><td>Database</td><td>PostgreSQL (배포), SQLite (로컬)</td></tr>
-<tr><td>Deploy</td><td>Docker 멀티 스테이지 빌드, AXHub</td></tr>
+<tr><td>Deploy</td><td>Docker 멀티 스테이지 빌드 (대회 기간 AXHub 배포)</td></tr>
 </table>
 
 </div>
@@ -273,7 +273,7 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 화면과 백엔드를 **컨테이너 하나**로 묶어 배포합니다. Next.js를 정적 파일로 빌드한 뒤 FastAPI가 화면과 API를 함께 내보냅니다.
 
 ```
-                       ┌──────────────── Docker 컨테이너 (AXHub) ────────────────┐
+                       ┌─────────────────── Docker 컨테이너 ────────────────────┐
                        │                                                         │
   브라우저 ──────────▶ │  FastAPI ── /            → Next.js 정적 화면 (out/)      │
                        │          ── /api/v1/...  → endpoints                    │
@@ -297,8 +297,9 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 
 ```
 .
-├── 01_참가자_배포용/          # 대회 원본 문제·데이터 (읽기 전용)
-│   └── 04_원본데이터/          # Masil · Corevia · Aurora 그룹 · 외부 데이터
+├── 01_참가자_배포용/          # 대회 원본 자료 중 문제 1번(W01) 관련만 (읽기 전용)
+│   ├── 04_원본데이터/          # 앱이 읽는 Masil · Corevia 원본 데이터
+│   └── 세계관_BPMN/            # W01 캠페인 수요와 공급 일정 BPMN 도식
 ├── data/
 │   └── assumptions/           # 원본에 없어 새로 정한 가정·매핑 (ASM-*, MAP-*)
 ├── backend/
@@ -321,7 +322,6 @@ AI는 **계산하지 않고 판단만** 합니다. 숫자는 모두 시스템이
 │       ├── lib/               # API 호출, 표시 형식, 라벨
 │       └── types/             # 기능별 타입
 ├── Dockerfile                 # 화면 빌드 → FastAPI 이미지에 함께 담기
-├── axhub.yaml                 # AXHub 배포 설정
 └── DEVELOPMENT.md             # 개발 가이드
 ```
 

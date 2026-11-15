@@ -24,5 +24,5 @@ COPY --from=frontend /build/out frontend/out
 
 WORKDIR /srv/backend
 EXPOSE 8080
-# DB 테이블을 맞춘 뒤 서버를 띄운다. AXHub 가 PORT 를 넣어 준다.
+# DB 테이블을 맞춘 뒤 서버를 띄운다. PORT 환경변수를 쓴다(기본 8080).
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips=*"]
